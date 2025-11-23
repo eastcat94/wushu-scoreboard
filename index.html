@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>实时成绩看板</title>
 <style>
+  body {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
   :root{--bg:#071226;--card:#0d1b2a;--accent:#f4c94e;--muted:#97a0b3;color-scheme:dark}
   html,body{height:100%;margin:0;font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;background:var(--bg);color:#fff}
   .wrap{max-width:1200px;margin:18px auto;padding:28px;box-sizing:border-box}
@@ -142,3 +147,4 @@ setInterval(fetchAndRender, INTERVAL_MS);
 </script>
 </body>
 </html>
+
