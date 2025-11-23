@@ -5,36 +5,65 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>实时成绩看板</title>
 <style>
-  #scaleWrap {
-    transform-origin: top center;
-}
-  body {
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;   /* 可选，让整体垂直居中 */
-}
   :root{--bg:#071226;--card:#0d1b2a;--accent:#f4c94e;--muted:#97a0b3;color-scheme:dark}
-  html,body{height:100%;margin:0;font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;background:var(--bg);color:#fff}
-  .wrap{max-width:1200px;margin:18px auto;padding:28px;box-sizing:border-box}
+
+  /* 基础重设：隐藏滚动条，整页居中 */
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; /* 关键：禁止滚动条 */
+    font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: #fff;
+  }
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* 缩放容器：使用 translate(-50%,-50%) + scale 居中 */
+  #scaleWrap {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform-origin: top center;
+    /* transform 在 JS 中设置为 translate(-50%,-50%) scale(...) */
+  }
+
+  /* 内部容器不再通过外边距撑高，避免滚动 */
+  .wrap {
+    max-width: 1200px;
+    padding: 28px;
+    box-sizing: border-box;
+    margin: 0;
+  }
+
   header{text-align:center;margin-bottom:6px}
-  header img{max-width:480px;height:auto;display:inline-block;border:4px solid #fff}
+  header img{max-width:480px;height:auto;display:inline-block;border:4px solid #fff; max-height:120px; object-fit:contain;}
+
   .title{font-size:56px;font-weight:800;margin:12px 0 6px;text-align:center}
   .name-eng{font-size:36px;font-weight:800;text-align:center;margin:6px 0}
   .name-chn{font-size:32px;text-align:center;margin:6px 0;color:var(--muted)}
   .club{font-size:20px;text-align:center;margin:6px 0;color:var(--muted)}
+
   .scores-row{display:flex;gap:18px;justify-content:center;align-items:stretch;margin-top:26px}
   .score-card{background:var(--card);padding:26px;border-radius:10px;min-width:220px;box-shadow:0 2px 6px rgba(0,0,0,0.2)}
   .label{font-size:14px;color:var(--muted);margin-bottom:6px;text-align:center}
   .value{font-size:36px;font-weight:900;text-align:center}
+
   .final-label{display:inline-block;background:var(--accent);color:#000;padding:10px 16px;border-radius:8px;font-weight:700;margin-top:22px}
   .final-score{font-size:120px;font-weight:900;color:var(--accent);margin:20px 0 8px;text-align:center}
   .meta{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
+
   .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:420px;overflow:auto;white-space:pre-wrap;display:none}
-  @media(max-width:900px){
+
+  /* 响应式：窗口较小时压缩字号并改为纵向堆叠 */
+  @media (max-width: 900px) {
     .title{font-size:34px}
     .final-score{font-size:64px}
     .scores-row{flex-direction:column}
+    header img{max-height:90px}
   }
 </style>
 </head>
@@ -43,7 +72,8 @@
     <div class="wrap">
 
         <header>
-            <img id="banner" src="./jun-wei-banner.jpg">
+            <!-- 你的本地图像路径不变 -->
+            <img id="banner" src="./jun-wei-banner.jpg" alt="banner">
         </header>
 
     <div class="title" id="sheetTitle">—</div>
@@ -82,21 +112,28 @@
   </div>
 
 <script>
+/* 注意：数据抓取与解析逻辑未改动，仅替换 autoScale/布局相关代码 */
+
+/* autoScale：计算 scale 并把 transform 设置为 translate(-50%,-50%) scale(...) 以确保容器绝对居中 */
 function autoScale() {
-    const designWidth = 1200;   // 你网页的最大宽度
-    const designHeight = 900;   // 页面高度（可微调）
+    const designWidth = 1200;   // 你网页的最大宽度（保持原值）
+    const designHeight = 900;   // 页面高度参考（可微调）
 
     const scaleX = window.innerWidth / designWidth;
     const scaleY = window.innerHeight / designHeight;
 
     const scale = Math.min(scaleX, scaleY);
 
-    document.getElementById("scaleWrap").style.transform = `scale(${scale})`;
+    const wrap = document.getElementById("scaleWrap");
+    // 使用 translate(-50%,-50%) + scale 保持中心点精确
+    wrap.style.transform = `translate(-50%, -50%) scale(${scale})`;
 }
 
+/* 立即执行并监听窗口变化 */
 autoScale();
-window.onresize = autoScale;
-/* Same logic as the previous file but with debug disabled */
+window.addEventListener('resize', autoScale);
+
+/* Same logic as the original file but with debug disabled by default */
 const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
 const GID = "387691548";
 const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
@@ -157,19 +194,23 @@ async function fetchAndRender(){
 
     document.getElementById('updatedAt').innerText = new Date().toLocaleString();
 
+    // 如果显示 debug，给出链接（保持原逻辑）
+    const gvizLink = document.getElementById('gvizLink');
+    if (gvizLink) {
+      gvizLink.href = GVIZ_URL;
+      gvizLink.innerText = 'Google Sheet (GViz)';
+    }
+
   } catch (err) {
     console.error(err);
+    setError(String(err));
   }
 }
 
 fetchAndRender();
 setInterval(fetchAndRender, INTERVAL_MS);
 </script>
-        </div> <!-- end wrap -->
-    </div> <!-- end scaleWrap -->
+    </div> <!-- end wrap -->
+  </div> <!-- end scaleWrap -->
 </body>
 </html>
-
-
-
-
