@@ -22,13 +22,14 @@
   .final-label{display:inline-block;background:var(--accent);color:#000;padding:8px 14px;border-radius:8px;font-weight:700;margin-top:22px}
   .final-score{font-size:180px;font-weight:900;color:var(--accent);margin:20px 0 8px}
   .meta{font-size:13px;color:var(--muted);margin-top:6px}
-  .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:360px}
+  .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:420px;overflow:auto}
   @media(max-width:800px){ .final-score{font-size:96px} .scores-row{flex-direction:column} .wrap{padding:12px}}
 </style>
 </head>
 <body>
   <div class="wrap">
     <header>
+      <!-- 请把 repo 中的 banner 文件名放在同目录，或改为公网 URL -->
       <img id="banner" src="./jun-wei-banner.jpg" alt="banner" />
     </header>
 
@@ -63,61 +64,110 @@
 
   <div class="debug" id="debugBox" style="display:none">
     <div><strong>Debug</strong></div>
-    <div>GViz URL: <a id="gvizLink" href="#" target="_blank"></a></div>
+    <div>GViz URL: <a id="gvizLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
     <div id="netStatus">状态: 等待</div>
     <pre id="netError" style="white-space:pre-wrap;color:#900"></pre>
   </div>
 
-<!-- 下面把你上传的脚本完整放进来（这是你之前的智能映射脚本） -->
 <script>
+/*
+固定映射版本（读取 B1:D8）——直接、稳定、对合并单元格不敏感
+使用说明：
+- 确保你的 Google Sheet 已发布或设置为“Anyone with the link can view”
+- 确保 SPREADSHEET_ID 与 GID 正确（已填你的值）
+- 若要更改刷新间隔，修改 INTERVAL_MS（毫秒）
+*/
 const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
 const GID = "387691548";
-const INTERVAL_MS = 3000;
+const INTERVAL_MS = 3000; // 每 3 秒刷新一次
 
-const GVIZ_URL =
-  `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 
-async function fetchScore() {
+// 显示 debug 面板（部署后可改为 false）
+const SHOW_DEBUG = true;
+if (SHOW_DEBUG) {
+  const d = document.getElementById('debugBox');
+  if (d) { d.style.display='block'; document.getElementById('gvizLink').innerText = GVIZ_URL; document.getElementById('gvizLink').href = GVIZ_URL; }
+}
+
+function setStatus(txt){ if (SHOW_DEBUG) document.getElementById('netStatus').innerText = '状态: ' + txt; }
+function setError(txt){ if (SHOW_DEBUG) document.getElementById('netError').innerText = txt; console.error(txt); }
+
+function safeParseGvizText(txt){
+  // 去掉 gviz 前缀并返回 JSON
+  const jsonText = txt.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '');
+  return JSON.parse(jsonText);
+}
+
+async function fetchScore(){
+  setStatus('请求中...');
+  setError('');
   try {
-    const res = await fetch(GVIZ_URL, { cache: "no-store" });
-    const text = await res.text();
-    const jsonText = text.replace(/^[\s\S]*?setResponse\(/, "").replace(/\);?\s*$/, "");
-    const data = JSON.parse(jsonText);
-
+    const res = await fetch(GVIZ_URL, {cache:'no-store'});
+    setStatus('HTTP ' + res.status);
+    if (!res.ok) {
+      const txt = await res.text().catch(()=>'');
+      setError('请求失败 HTTP ' + res.status + '\n' + txt.slice(0,800));
+      return;
+    }
+    const txt = await res.text();
+    const data = safeParseGvizText(txt);
+    if (!data || !data.table || !data.table.rows) {
+      setError('返回数据不包含 table.rows，请检查表格是否已发布或权限设置。返回片段：\n' + txt.slice(0,500));
+      return;
+    }
     const rows = data.table.rows;
 
-    // 直接固定 B1:D8
+    // 注意：gviz API 的 rows 是从 0 开始，与 sheet 实际行对应时如果你只请求 B:D 区域，索引对应你需要验证。
+    // 这里按之前讨论采用 rows[0] -> 第一行被读取区域（相当于 sheet 的第一被读取行）
+    // 我们假设 rows[0] 对应 B1..D1，rows[1] 对应 B2..D2 ... 以此类推（与你之前的表格截屏一致）
     const get = (r, c) => {
-      const cell = rows[r]?.c[c];
-      if (!cell) return "";
-      return cell.v ?? cell.f ?? "";
+      // r, c 都是 0-based
+      const cell = rows[r] && rows[r].c && rows[r].c[c];
+      if (!cell) return '';
+      return (cell.v !== undefined) ? cell.v : (cell.f !== undefined ? cell.f : '');
     };
 
-    document.getElementById("nameEng").innerText = get(1, 1);
-    document.getElementById("nameChn").innerText = get(2, 1);
-    document.getElementById("club").innerText = get(3, 1);
+    // 依据 B1:D8 映射：
+    // rows[0] -> B1..D1
+    // rows[1] -> B2..D2
+    // ...
+    document.getElementById('nameEng').innerText = String(get(1,0) || get(1,1) || get(1,2) || '—');
+    document.getElementById('nameChn').innerText = String(get(2,0) || get(2,1) || get(2,2) || '—');
+    document.getElementById('club').innerText = String(get(3,0) || get(3,1) || get(3,2) || '—');
 
-    document.getElementById("labelA").innerText = get(4, 1);
-    document.getElementById("labelB").innerText = get(4, 2);
-    document.getElementById("labelPenalty").innerText = get(4, 3);
+    document.getElementById('labelA').innerText = String(get(4,0) || 'A组得分');
+    document.getElementById('labelB').innerText = String(get(4,1) || 'B组得分');
+    document.getElementById('labelPenalty').innerText = String(get(4,2) || '裁判长扣分');
 
-    document.getElementById("valA").innerText = get(5, 1);
-    document.getElementById("valB").innerText = get(5, 2);
-    document.getElementById("valPenalty").innerText = get(5, 3);
+    document.getElementById('valA').innerText = formatScore(get(5,0));
+    document.getElementById('valB').innerText = formatScore(get(5,1));
+    document.getElementById('valPenalty').innerText = formatScore(get(5,2));
 
-    document.getElementById("finalLabel").innerText = get(6, 1);
-    document.getElementById("finalScore").innerText = get(7, 1);
+    document.getElementById('finalLabel').innerText = String(get(6,0) || 'Final Score 最终得分');
+    document.getElementById('finalScore').innerText = formatScore(get(7,0));
 
-    document.getElementById("updatedAt").innerText =
-      new Date().toLocaleString();
+    document.getElementById('updatedAt').innerText = new Date().toLocaleString();
+
+    setStatus('解析并更新成功');
   } catch (err) {
-    console.error("Error:", err);
+    setError('Fetch/解析异常: ' + err.toString());
   }
 }
 
+function formatScore(v){
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  if (!isNaN(n)) {
+    // 若是整数显示整数，否则显示两位小数
+    return (n % 1 === 0) ? n.toFixed(0) : n.toFixed(2);
+  }
+  return String(v);
+}
+
+// 初次立即拉取并开始定时
 fetchScore();
 setInterval(fetchScore, INTERVAL_MS);
 </script>
-
 </body>
 </html>
