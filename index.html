@@ -108,8 +108,8 @@ function safeCell(rows, r, c){
 function formatScore(v){
   if (v === null || v === undefined || v === '') return '—';
   const n = Number(v);
-  if (isNaN(n)) return String(v);
-  return n.toFixed(2);   // ⬅ 永远两位小数
+  if (!isNaN(n)) return (n % 1 === 0) ? n.toFixed(0) : n.toFixed(2);
+  return String(v);
 }
 
 async function fetchAndRender(){
