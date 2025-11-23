@@ -1,123 +1,193 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>比赛成绩直播板</title>
-  <style>
-    :root{
-      --blue: #4e86f7;
-      --bg: #ffffff;
-      --text: #000;
-    }
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family: "Arial Black","Impact", "Arial", sans-serif}
-    .wrap{max-width:1280px;margin:0 auto;padding:12px;box-sizing:border-box}
-    header{display:flex;align-items:center;justify-content:center;margin-bottom:6px}
-    header img{max-height:120px;display:block}
-    .title{font-size:64px;text-align:center;margin:6px 0 18px;font-weight:700}
-    .grid{display:grid;grid-template-columns:1fr 360px;gap:12px;align-items:center}
-    .main{
-      background:transparent;
-      padding:12px;
-      box-sizing:border-box;
-    }
-    .name{font-size:56px;text-align:center;margin:6px 0;letter-spacing:1px}
-    .cnname{font-size:44px;text-align:center;margin:6px 0;font-weight:600}
-    .club{font-size:44px;text-align:center;margin:6px 0;font-weight:700}
-    .score-block{display:flex;align-items:center;justify-content:space-between;padding:6px 12px}
-    .score-left{font-size:32px;font-weight:800}
-    .score-right{font-size:48px;font-weight:900}
-    .bluebar{background:var(--blue);color:#fff;padding:16px;font-size:36px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
-    .final{font-size:160px;text-align:center;font-weight:900;margin-top:18px}
-    .meta{font-size:16px;text-align:center;color:#666;margin-top:8px}
-    /* responsive */
-    @media(max-width:900px){
-      .grid{grid-template-columns:1fr}
-      .final{font-size:96px}
-      .title{font-size:40px}
-      .name{font-size:36px}
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>实时成绩看板</title>
+<style>
+  :root{--bg:#071226;--card:#0d1b2a;--accent:#f4c94e;--muted:#97a0b3;color-scheme:dark}
+  html,body{height:100%;margin:0;font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;background:var(--bg);color:#fff}
+  .wrap{max-width:1200px;margin:18px auto;padding:28px}
+  header{text-align:center;margin-bottom:4px}
+  header img{max-width:420px;height:auto;display:inline-block}
+  .title{font-size:44px;font-weight:800;margin:8px 0 30px;text-align:center}
+  .center{max-width:960px;margin:0 auto;text-align:center}
+  .name-eng{font-size:36px;font-weight:800;margin:6px 0}
+  .name-chn{font-size:28px;margin:6px 0;color:var(--muted)}
+  .club{font-size:18px;color:var(--muted);margin-bottom:22px}
+  .scores-row{display:flex;gap:18px;justify-content:center;align-items:stretch;margin-top:18px}
+  .score-card{background:var(--card);padding:20px;border-radius:8px;min-width:200px}
+  .label{font-size:14px;color:var(--muted);margin-bottom:6px;text-align:center}
+  .value{font-size:32px;font-weight:900;text-align:center}
+  .final-label{display:inline-block;background:var(--accent);color:#000;padding:8px 14px;border-radius:8px;font-weight:700;margin-top:22px}
+  .final-score{font-size:180px;font-weight:900;color:var(--accent);margin:20px 0 8px}
+  .meta{font-size:13px;color:var(--muted);margin-top:6px}
+  .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:360px}
+  @media(max-width:800px){ .final-score{font-size:96px} .scores-row{flex-direction:column} .wrap{padding:12px}}
+</style>
 </head>
 <body>
   <div class="wrap">
-    <!-- 可替换为线上 URL 或移除 header -->
     <header>
+      <!-- 用你 repo 里的文件名（我看到你已上传 jun-wei-banner.jpg） -->
       <img id="banner" src="./jun-wei-banner.jpg" alt="banner" />
+      <!-- 你在对话里上传到我的临时环境的本地路径（仅供参考）：
+           /mnt/data/dec148f7-21db-436b-8ce1-ed4e1dcdc0cc.png
+           若你要改为线上 URL，可替换上面 src -->
     </header>
 
     <div class="title">自选长拳</div>
 
-    <div class="grid">
-      <div class="main">
-        <div class="name" id="name">—</div>
-        <div class="cnname" id="cnname">—</div>
-        <div class="club" id="club">—</div>
+    <div class="center">
+      <!-- B2:D2 英文名 -->
+      <div id="nameEng" class="name-eng">—</div>
+      <!-- B3:D3 中文名 -->
+      <div id="nameChn" class="name-chn">—</div>
+      <!-- B4:D4 学校 -->
+      <div id="club" class="club">—</div>
 
-        <div style="height:18px"></div>
-
-        <div style="display:flex;gap:12px;align-items:center;justify-content:space-between">
-          <div style="flex:1">
-            <div style="font-size:28px;font-weight:800;margin-bottom:6px" id="leftLabels">—</div>
-            <div style="font-size:48px;font-weight:900" id="scoreA">—</div>
-          </div>
-
-          <div style="width:20px"></div>
-
-          <div style="flex:1">
-            <div style="font-size:28px;font-weight:800;margin-bottom:6px;text-align:center" id="centerLabels">—</div>
-            <div style="font-size:48px;font-weight:900;text-align:center" id="scoreB">—</div>
-          </div>
-
+      <div class="scores-row">
+        <div class="score-card">
+          <div class="label" id="labelA">A组得分</div>
+          <div class="value" id="valA">—</div>
         </div>
-
-        <div class="bluebar" style="margin-top:22px">
-          <div id="finalLabel">Final Score 最终得分</div>
-          <div id="penaltyLabel">裁判长扣分</div>
+        <div class="score-card">
+          <div class="label" id="labelB">B组得分</div>
+          <div class="value" id="valB">—</div>
         </div>
-
-        <div class="final" id="finalScore">—</div>
-
-        <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
-      </div>
-
-      <div style="padding-left:12px">
-        <!-- 右侧摘要/快速信息 -->
-        <div style="background:#fafafa;border:1px solid #eee;padding:12px;border-radius:6px">
-          <div style="font-size:20px;font-weight:800;margin-bottom:8px">摘要</div>
-          <div style="font-size:16px">A组： <span id="sideA">—</span></div>
-          <div style="font-size:16px">B组： <span id="sideB">—</span></div>
-          <div style="font-size:16px;margin-top:8px">裁判长： <span id="sidePenalty">—</span></div>
-          <hr style="margin:10px 0">
-          <div style="font-size:16px">选手： <span id="sideName">—</span></div>
-          <div style="font-size:16px">单位： <span id="sideClub">—</span></div>
+        <div class="score-card">
+          <div class="label" id="labelPenalty">裁判长扣分</div>
+          <div class="value" id="valPenalty">—</div>
         </div>
       </div>
+
+      <div class="final-label" id="finalLabel">Final Score 最终得分</div>
+      <div class="final-score" id="finalScore">—</div>
+
+      <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
     </div>
+  </div>
+
+  <div class="debug" id="debugBox" style="display:none">
+    <div><strong>Debug</strong></div>
+    <div>GViz URL: <a id="gvizLink" href="#" target="_blank"></a></div>
+    <div id="netStatus">状态: 等待</div>
+    <pre id="netError" style="white-space:pre-wrap;color:#900"></pre>
   </div>
 
 <script>
 /*
-  自动从 Google Sheet 的 gviz JSON 接口读取数据并更新页面
-  已配置为你的表格 ID 与 gid（Score sheet）。
-  - Sheet ID: 1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w
-  - gid: 387691548
-  - 每 5 秒刷新一次
-  映射依据：页面截图所示，选中了 B:D 的区域，行索引从 0 开始：
-    rows[0] -> B1..D1 (标题)
-    rows[1] -> B2..D2 (选手英文名)
-    rows[2] -> B3..D3 (选手中文名)
-    rows[3] -> B4..D4 (单位/club)
-    rows[4] -> B5..D5 (A组得分 / B组得分 / 裁判长扣分 标签)
-    rows[5] -> B6..D6 (A组数值 / B组数值 / penalty)
-    rows[6] -> B7..D7 (Final Score label)
-    rows[7] -> B8..D8 (Final Score value)
+  配置（已替你填写）
+  sheet 名：score （你说的是 score） 但 gviz 接口通过 gid 访问，所以我们直接用 gid
+  SPREADSHEET_ID 与 GID 来自你提供的链接
 */
 const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
-const GID = "387691548";
-const INTERVAL_MS = 5000;
+const GID = "387691548";        // 你给的 gid
+const INTERVAL_MS = 5000;      // 每 5 秒刷新一次
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 
-function gvizUrl() {
-  // 使用公开的 gviz 接口（你的 sheet 必须已经 Publish to the web 或该表格可被读取）
-  return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gi_
+// debug 显示（若需要调试可设为 true）
+const SHOW_DEBUG = true;
 
+if (SHOW_DEBUG) {
+  document.getElementById('debugBox').style.display = 'block';
+  document.getElementById('gvizLink').innerText = GVIZ_URL;
+  document.getElementById('gvizLink').href = GVIZ_URL;
+}
+
+function setStatus(txt){ if (SHOW_DEBUG) document.getElementById('netStatus').innerText = '状态: ' + txt; }
+function setError(txt){ if (SHOW_DEBUG) document.getElementById('netError').innerText = txt; console.error(txt); }
+
+// 安全读取表格单元，映射 B1:D8 到 rows[0..7].c[0..2]
+function safeCell(rows, r, c){
+  if (!rows || !rows[r] || !rows[r].c || !rows[r].c[c]) return null;
+  const cell = rows[r].c[c];
+  if (!cell) return null;
+  if (cell.v !== undefined) return cell.v;
+  if (cell.f !== undefined) return cell.f;
+  return null;
+}
+
+// 将抓回的表映射到 DOM（按你要求）
+function applyTable(table) {
+  const rows = (table && table.rows) ? table.rows : [];
+  // B1:D1 项目（我们不专门显示，若需要可从 rows[0] 读）
+  // B2:D2 NAME -> rows[1][0..2] （我们只取第一个单元作为姓名）
+  const nameEng = safeCell(rows,1,0) || safeCell(rows,1,1) || safeCell(rows,1,2) || '—';
+  const nameChn = safeCell(rows,2,0) || '—';
+  const club = safeCell(rows,3,0) || '—';
+
+  // B5 A组得分 label, C5 B组得分 label, D5 裁判长扣分 label
+  const labelA = safeCell(rows,4,0) || 'A组得分';
+  const labelB = safeCell(rows,4,1) || 'B组得分';
+  const labelPenalty = safeCell(rows,4,2) || '裁判长扣分';
+
+  // B6 C6 D6 数值
+  const valAraw = safeCell(rows,5,0);
+  const valBraw = safeCell(rows,5,1);
+  const valPenaltyRaw = safeCell(rows,5,2);
+
+  // B7:D7 final label, B8:D8 final value
+  const finalLabel = safeCell(rows,6,0) || 'Final Score 最终得分';
+  const finalValueRaw = safeCell(rows,7,0);
+
+  // 写入 DOM（格式化数字）
+  document.getElementById('nameEng').innerText = String(nameEng);
+  document.getElementById('nameChn').innerText = String(nameChn);
+  document.getElementById('club').innerText = String(club);
+
+  document.getElementById('labelA').innerText = String(labelA);
+  document.getElementById('labelB').innerText = String(labelB);
+  document.getElementById('labelPenalty').innerText = String(labelPenalty);
+
+  document.getElementById('valA').innerText = formatScore(valAraw);
+  document.getElementById('valB').innerText = formatScore(valBraw);
+  document.getElementById('valPenalty').innerText = formatScore(valPenaltyRaw);
+  document.getElementById('finalLabel').innerText = String(finalLabel);
+  document.getElementById('finalScore').innerText = formatScore(finalValueRaw);
+
+  document.getElementById('updatedAt').innerText = (new Date()).toLocaleString();
+}
+
+function formatScore(v){
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  if (!isNaN(n)) {
+    // 若为整数则显示整数（或保留一位/两位根据需要）
+    return (n % 1 === 0) ? n.toFixed(0) : n.toFixed(2);
+  }
+  return String(v);
+}
+
+async function fetchAndUpdate(){
+  setStatus('请求中...');
+  setError('');
+  try {
+    const res = await fetch(GVIZ_URL, {cache:'no-store'});
+    setStatus('HTTP ' + res.status);
+    if (!res.ok) {
+      const txt = await res.text().catch(()=>'');
+      setError('请求失败: HTTP ' + res.status + '\n' + txt.slice(0,1000));
+      return;
+    }
+    const txt = await res.text();
+    // gviz 返回包裹的 JSON，需要去掉前缀
+    const jsonText = txt.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '');
+    const data = JSON.parse(jsonText);
+    if (!data || !data.table) {
+      setError('返回数据不包含 table，可能未发布或权限问题，返回片段:\n' + txt.slice(0,500));
+      return;
+    }
+    setStatus('解析成功');
+    applyTable(data.table);
+  } catch (err) {
+    setError('Fetch/解析异常: ' + err.toString());
+  }
+}
+
+// 首次加载并循环
+fetchAndUpdate();
+setInterval(fetchAndUpdate, INTERVAL_MS);
+</script>
+</body>
+</html>
