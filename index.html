@@ -86,44 +86,30 @@
 
 <script>
 /*
-全新从头实现（固定映射）
-映射（你最后确认的）：
- - B1 -> 页面第一排 title (rows[0].c[0])
- - B2 -> rows[1].c[0] -> 英文名 (nameEng)
- - B3 -> rows[2].c[0] -> 中文名 (nameChn)
- - B4 -> rows[3].c[0] -> 学校 (club)
- - 第五排 页面固定显示 A组/B组/裁判长扣分（不从 sheet 读取）
- - 第六排数值：
-     B6 -> rows[5].c[0]  (A组分数)
-     C6 -> rows[5].c[1]  (B组分数)
-     C7 -> rows[6].c[1]  (裁判长扣分)  <-- 按你指定使用C7
- - 第七排 页面固定黄色方块文本（Final Score 最终得分）
- - 第八排最终分数：B8 -> rows[7].c[0]
-先决条件：请确保你的 Google Sheet 已 Publish to the web 或 Share 为 Anyone with link can view
+ 自动检测 B 列在 gviz rows[].c[] 中的列索引（baseCol），并按你要求映射：
+ - 第一排 title -> B1 -> rows[0].c[baseCol]
+ - 第二排 英文名 -> B2 -> rows[1].c[baseCol]
+ - 第三排 中文名 -> B3 -> rows[2].c[baseCol]
+ - 第四排 学校   -> B4 -> rows[3].c[baseCol]
+ 保持第5/6/7行现状（不改），第6行数值仍为 B6/C6/C7（按你的需求），
+ 第8行最终分数 -> B8 -> rows[7].c[baseCol]
 */
-
 const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
 const GID = "387691548";
-const INTERVAL_MS = 3000; // 刷新间隔（毫秒）
-
+const INTERVAL_MS = 3000;
 const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
-const SHOW_DEBUG = true;
 
-// 显示 debug 面板并填入 gviz URL
+// debug 可见，部署稳定后可设为 false
+const SHOW_DEBUG = true;
 if (SHOW_DEBUG) {
   const d = document.getElementById('debugBox');
-  if (d) {
-    d.style.display = 'block';
-    document.getElementById('gvizLink').innerText = GVIZ_URL;
-    document.getElementById('gvizLink').href = GVIZ_URL;
-  }
+  if (d) { d.style.display='block'; document.getElementById('gvizLink').innerText = GVIZ_URL; document.getElementById('gvizLink').href = GVIZ_URL; }
 }
-
 function setStatus(txt){ if (SHOW_DEBUG) document.getElementById('netStatus').innerText = '状态: ' + txt; }
 function setError(txt){ if (SHOW_DEBUG) document.getElementById('netError').innerText = txt; console.error(txt); }
 
-function parseGvizText(txt){
-  const jsonText = txt.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '');
+function parseGviz(text){
+  const jsonText = text.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '');
   return JSON.parse(jsonText);
 }
 function safeCell(rows, r, c){
@@ -132,6 +118,13 @@ function safeCell(rows, r, c){
   if (!cell) return null;
   return (cell.v !== undefined) ? cell.v : (cell.f !== undefined ? cell.f : null);
 }
+function isTextLike(v){
+  if (v === null || v === undefined) return false;
+  const s = String(v).trim();
+  if (s === '') return false;
+  // 不是纯数字就认为是文本（姓名、标题）
+  return isNaN(Number(s));
+}
 function formatScore(v){
   if (v === null || v === undefined || v === '') return '—';
   const n = Number(v);
@@ -139,7 +132,29 @@ function formatScore(v){
   return String(v);
 }
 
-async function fetchAndRender(){
+// 尝试检测 baseCol：在 rows 0..3 中，找第一个“文本型”列索引
+function detectBaseCol(rows){
+  if (!rows || rows.length === 0) return 0;
+  // 找到 rows 中最大列数
+  let maxCols = 0;
+  for (let r=0;r<Math.min(rows.length,8);r++){
+    const len = rows[r] && rows[r].c ? rows[r].c.length : 0;
+    if (len > maxCols) maxCols = len;
+  }
+  // 对每一列索引 j，从 rows 0..3 检查是否有文本
+  for (let j=0;j<maxCols;j++){
+    let textFound = false;
+    for (let r=0;r<=3 && r<rows.length;r++){
+      const v = safeCell(rows, r, j);
+      if (isTextLike(v)) { textFound = true; break; }
+    }
+    if (textFound) return j;
+  }
+  // 回退：若没找到文本列，默认 0
+  return 0;
+}
+
+async function fetchAndUpdate(){
   setStatus('请求中...');
   setError('');
   try {
@@ -151,51 +166,61 @@ async function fetchAndRender(){
       return;
     }
     const txt = await res.text();
-    const data = parseGvizText(txt);
+    const data = parseGviz(txt);
     if (!data || !data.table || !data.table.rows) {
-      setError('返回数据缺少 table.rows，请检查 sheet 是否已发布或权限。返回片段:\n' + (txt||'').slice(0,300));
+      setError('返回数据不包含 table.rows，请检查 publish 或权限。返回片段:\n' + (txt || '').slice(0,400));
       return;
     }
     const rows = data.table.rows;
 
-    // 映射并写入 DOM（按你指定的单元格）
-    // B1 -> rows[0].c[0]
-    const B1 = safeCell(rows,0,0);
+    // 检测 baseCol
+    const baseCol = detectBaseCol(rows);
+
+    // 按你的要求映射（以 baseCol 为 B 列）
+    const B1 = safeCell(rows, 0, baseCol);
+    const B2 = safeCell(rows, 1, baseCol);
+    const B3 = safeCell(rows, 2, baseCol);
+    const B4 = safeCell(rows, 3, baseCol);
+
+    // 写到页面（前四排）
     document.getElementById('sheetTitle').innerText = (B1 && String(B1).trim() !== '') ? String(B1) : '—';
+    document.getElementById('nameEng').innerText = (B2 && String(B2).trim() !== '') ? String(B2) : '—';
+    document.getElementById('nameChn').innerText = (B3 && String(B3).trim() !== '') ? String(B3) : '—';
+    document.getElementById('club').innerText = (B4 && String(B4).trim() !== '') ? String(B4) : '—';
 
-    // B2 / B3 / B4
-    document.getElementById('nameEng').innerText = String(safeCell(rows,1,0) || '—');
-    document.getElementById('nameChn').innerText = String(safeCell(rows,2,0) || '—');
-    document.getElementById('club').innerText = String(safeCell(rows,3,0) || '—');
+    // 第五行保持固定标题（不从 sheet 读），第六行你之前说不用改，我保留你当前逻辑：
+    // 按你要求的数值来源： B6 (rows[5][baseCol]) , C6 (rows[5][baseCol+1]), C7 (rows[6][baseCol+1])
+    const rawA = safeCell(rows,5, baseCol);       // B6
+    const rawB = safeCell(rows,5, baseCol+1);     // C6
+    const rawPenalty = safeCell(rows,6, baseCol+1); // C7
 
-    // 第五排固定标题（不读取）
-    // 第六排读取 B6, C6, C7
-    const rawA = safeCell(rows,5,0); // B6
-    const rawB = safeCell(rows,5,1); // C6
-    const rawPenalty = safeCell(rows,6,1); // C7 (按你要求)
     document.getElementById('valA').innerText = formatScore(rawA);
     document.getElementById('valB').innerText = formatScore(rawB);
-    document.getElementById('valFinalSmall').innerText = formatScore(rawB); // small center shows Final label's small value (optional)
-    document.getElementById('valPenalty').innerText = formatScore(rawPenalty); // (not visible in current layout but kept for completeness)
+    // 若页面有小的final small显示，可用 rawB（保持和之前相同）
+    const fsSmall = document.getElementById('valFinalSmall');
+    if (fsSmall) fsSmall.innerText = formatScore(rawB);
+    // penalty 若有元素
+    const penaltyEl = document.getElementById('valPenalty');
+    if (penaltyEl) penaltyEl.innerText = formatScore(rawPenalty);
 
-    // 第七排固定黄色方块（不读取）
-    // 第八排：最终分数 B8
-    const finalVal = safeCell(rows,7,0); // B8
+    // 第七行固定黄色方块（不读取）
+    // 第八行：最终分数 B8 -> rows[7][baseCol]
+    const finalVal = safeCell(rows,7, baseCol);
     document.getElementById('finalScore').innerText = formatScore(finalVal);
 
     document.getElementById('updatedAt').innerText = new Date().toLocaleString();
 
-    // Debug 输出（便于确认）
+    // Debug 输出
     const dbg = [
-      'rows.length=' + (rows ? rows.length : 0),
-      `B1='${safeCell(rows,0,0)}'`,
-      `B2='${safeCell(rows,1,0)}'`,
-      `B3='${safeCell(rows,2,0)}'`,
-      `B4='${safeCell(rows,3,0)}'`,
-      `B6='${safeCell(rows,5,0)}'`,
-      `C6='${safeCell(rows,5,1)}'`,
-      `C7='${safeCell(rows,6,1)}'`,
-      `B8='${safeCell(rows,7,0)}'`
+      `detected baseCol = ${baseCol}`,
+      `B1(rows[0][${baseCol}])='${safeCell(rows,0,baseCol)}'`,
+      `B2(rows[1][${baseCol}])='${safeCell(rows,1,baseCol)}'`,
+      `B3(rows[2][${baseCol}])='${safeCell(rows,2,baseCol)}'`,
+      `B4(rows[3][${baseCol}])='${safeCell(rows,3,baseCol)}'`,
+      `B6(rows[5][${baseCol}])='${safeCell(rows,5,baseCol)}'`,
+      `C6(rows[5][${baseCol+1}])='${safeCell(rows,5,baseCol+1)}'`,
+      `C7(rows[6][${baseCol+1}])='${safeCell(rows,6,baseCol+1)}'`,
+      `B8(rows[7][${baseCol}])='${safeCell(rows,7,baseCol)}'`
     ].join('\n');
     setStatus('解析并更新成功');
     if (SHOW_DEBUG) setError('Mapping debug:\n' + dbg);
@@ -205,9 +230,11 @@ async function fetchAndRender(){
   }
 }
 
-fetchAndRender();
-setInterval(fetchAndRender, INTERVAL_MS);
+fetchAndUpdate();
+setInterval(fetchAndUpdate, INTERVAL_MS);
 </script>
+
 
 </body>
 </html>
+
