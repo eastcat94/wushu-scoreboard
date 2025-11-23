@@ -69,6 +69,55 @@
   </div>
 
 <!-- 下面把你上传的脚本完整放进来（这是你之前的智能映射脚本） -->
+<script>
+const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
+const GID = "387691548";
+const INTERVAL_MS = 3000;
+
+const GVIZ_URL =
+  `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+
+async function fetchScore() {
+  try {
+    const res = await fetch(GVIZ_URL, { cache: "no-store" });
+    const text = await res.text();
+    const jsonText = text.replace(/^[\s\S]*?setResponse\(/, "").replace(/\);?\s*$/, "");
+    const data = JSON.parse(jsonText);
+
+    const rows = data.table.rows;
+
+    // 直接固定 B1:D8
+    const get = (r, c) => {
+      const cell = rows[r]?.c[c];
+      if (!cell) return "";
+      return cell.v ?? cell.f ?? "";
+    };
+
+    document.getElementById("nameEng").innerText = get(1, 1);
+    document.getElementById("nameChn").innerText = get(2, 1);
+    document.getElementById("club").innerText = get(3, 1);
+
+    document.getElementById("labelA").innerText = get(4, 1);
+    document.getElementById("labelB").innerText = get(4, 2);
+    document.getElementById("labelPenalty").innerText = get(4, 3);
+
+    document.getElementById("valA").innerText = get(5, 1);
+    document.getElementById("valB").innerText = get(5, 2);
+    document.getElementById("valPenalty").innerText = get(5, 3);
+
+    document.getElementById("finalLabel").innerText = get(6, 1);
+    document.getElementById("finalScore").innerText = get(7, 1);
+
+    document.getElementById("updatedAt").innerText =
+      new Date().toLocaleString();
+  } catch (err) {
+    console.error("Error:", err);
+  }
+}
+
+fetchScore();
+setInterval(fetchScore, INTERVAL_MS);
+</script>
 
 </body>
 </html>
