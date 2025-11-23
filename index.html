@@ -2,225 +2,258 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>武术实时成绩板 - 完整版</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>实时成绩看板</title>
+
 <style>
-/* Prevent any page scroll and ensure viewport fits */
+:root{
+    --bg:#071226;
+    --card:#0d1b2a;
+    --accent:#f4c94e;
+    --muted:#97a0b3;
+}
+
+/* 让页面占满屏幕并无滚动条 */
 html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #071226;
-  color: #fff;
-  font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
 }
 
-/* Outer scale container fills viewport */
-#scaleWrap {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-  position: relative;
+/* 全局居中容器 —— 关键 */
+body{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:var(--bg);
+    font-family:"Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color:#fff;
 }
 
-/* Inner content will be scaled to fit */
-.wrap {
-  transform-origin: top center;
-  max-width: 1200px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 28px;
+/* 缩放包裹 */
+#scaleWrap{
+    transform-origin: top center;
 }
 
-/* Visual styles */
-header { text-align:center; margin-bottom:6px; }
-#banner { max-width:480px; width:80vw; height:auto; display:inline-block; border:4px solid #fff; }
+/* 主内容宽度 */
+.wrap{
+    max-width:1200px;
+    margin:0 auto;
+    padding:20px;
+    box-sizing:border-box;
+    text-align:center;
+}
 
-.title { font-size:56px; font-weight:800; margin:12px 0 6px; text-align:center; }
-.name-eng { font-size:36px; font-weight:800; text-align:center; margin:6px 0; }
-.name-chn { font-size:32px; text-align:center; margin:6px 0; color:#97a0b3; }
-.club { font-size:20px; text-align:center; margin:6px 0; color:#97a0b3; }
+/* Banner */
+header img{
+    max-width:480px;
+    height:auto;
+    display:block;
+    margin:0 auto 25px;
+    border:4px solid #fff;
+}
 
-.scores-row { display:flex; gap:18px; justify-content:center; align-items:stretch; margin-top:26px; }
-.score-card { background:#0d1b2a; padding:26px; border-radius:10px; min-width:220px; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
-.label { font-size:14px; color:#97a0b3; margin-bottom:6px; text-align:center; }
-.value { font-size:36px; font-weight:900; text-align:center; }
+/* 各种排版 */
+.title{
+    font-size:56px;
+    font-weight:800;
+    margin:10px 0 6px;
+}
+.name-eng{
+    font-size:36px;
+    font-weight:800;
+    color:#fff;
+    margin:6px 0;
+}
+.name-chn{
+    font-size:32px;
+    margin:8px 0;
+    color:var(--muted);
+}
+.club{
+    font-size:20px;
+    color:var(--muted);
+}
 
-.final-label { display:inline-block; background:#f4c94e; color:#000; padding:10px 16px; border-radius:8px; font-weight:700; margin-top:22px; }
-.final-score { font-size:120px; font-weight:900; color:#f4c94e; margin:20px 0 8px; text-align:center; }
-.meta { font-size:13px; color:#97a0b3; text-align:center; margin-top:10px; }
+.scores-row{
+    display:flex;
+    gap:18px;
+    justify-content:center;
+    margin-top:26px;
+}
 
-/* Debug panel - hidden by default but available inside scale area */
-.debug { position: absolute; right:12px; top:12px; background:#fff; color:#000; padding:10px; border-radius:8px; font-size:12px; z-index:9999; max-width:420px; overflow:auto; white-space:pre-wrap; display:none; }
+.score-card{
+    min-width:220px;
+    background:var(--card);
+    padding:25px;
+    border-radius:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.2);
+}
 
-/* Responsive */
-@media(max-width:900px){
-  .title{ font-size:34px; }
-  .final-score{ font-size:64px; }
-  .scores-row{ flex-direction:column; align-items:center; }
-  #banner { width:60vw; max-width:360px; }
+.label{
+    font-size:14px;
+    color:var(--muted);
+    margin-bottom:10px;
+}
+.value{
+    font-size:36px;
+    font-weight:900;
+}
+
+/* Final Score */
+.final-label{
+    display:inline-block;
+    background:var(--accent);
+    color:#000;
+    padding:10px 18px;
+    border-radius:8px;
+    margin-top:25px;
+    font-weight:700;
+}
+.final-score{
+    font-size:120px;
+    font-weight:900;
+    color:var(--accent);
+    margin:20px 0 0;
+}
+
+.meta{
+    font-size:13px;
+    color:var(--muted);
+    margin-top:12px;
+}
+
+/* Debug panel */
+.debug{
+    position:fixed;
+    right:12px;
+    top:12px;
+    background:#fff;
+    color:#000;
+    padding:10px;
+    border-radius:8px;
+    z-index:9999;
+    max-width:420px;
+    font-size:12px;
+    overflow:auto;
+    white-space:pre-wrap;
 }
 </style>
 </head>
+
 <body>
-  <div id="scaleWrap">
+<div id="scaleWrap">
     <div class="wrap">
 
-      <header>
-        <img id="banner" src="./jun-wei-banner.jpg" alt="banner" />
-      </header>
+        <header>
+            <img src="./jun-wei-banner.jpg" id="banner" />
+        </header>
 
-      <div class="title" id="sheetTitle">—</div>
-      <div class="name-eng" id="nameEng">—</div>
-      <div class="name-chn" id="nameChn">—</div>
-      <div class="club" id="club">—</div>
+        <div class="title" id="sheetTitle"></div>
+        <div class="name-eng" id="nameEng"></div>
+        <div class="name-chn" id="nameChn"></div>
+        <div class="club" id="club"></div>
 
-      <div class="scores-row" style="margin-top:20px">
-        <div class="score-card">
-          <div class="label" id="labelA">A组得分</div>
-          <div class="value" id="valA">—</div>
+        <div class="scores-row">
+            <div class="score-card">
+                <div class="label">A组得分</div>
+                <div class="value" id="valA">—</div>
+            </div>
+            <div class="score-card">
+                <div class="label">B组得分</div>
+                <div class="value" id="valB">—</div>
+            </div>
+            <div class="score-card">
+                <div class="label">裁判长扣分</div>
+                <div class="value" id="valPenalty">—</div>
+            </div>
         </div>
-        <div class="score-card">
-          <div class="label" id="labelB">B组得分</div>
-          <div class="value" id="valB">—</div>
+
+        <div style="margin-top:20px;">
+            <span class="final-label">Final Score 最终得分</span>
         </div>
-        <div class="score-card">
-          <div class="label" id="labelPenalty">裁判长扣分</div>
-          <div class="value" id="valPenalty">—</div>
-        </div>
-      </div>
 
-      <div style="text-align:center;margin-top:18px">
-        <span class="final-label" id="finalLabel">Final Score 最终得分</span>
-      </div>
-      <div class="final-score" id="finalScore">—</div>
+        <div class="final-score" id="finalScore">0.00</div>
+        <div class="meta">最后更新时间：<span id="updatedAt"></span></div>
 
-      <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
+    </div>
+</div>
 
-      <!-- debug panel (kept inside scaleWrap) -->
-      <div class="debug" id="debugBox" aria-hidden="true">
-        <div><strong>Debug</strong></div>
-        <div>GViz URL: <a id="gvizLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
-        <div id="netStatus">状态: 等待</div>
-        <pre id="netError" style="color:#900"></pre>
-      </div>
-
-    </div> <!-- .wrap -->
-  </div> <!-- #scaleWrap -->
+<!-- Debug Panel -->
+<div class="debug" id="debugBox" style="display:none;">
+<strong>Debug</strong>
+<div id="gvizLink"></div>
+<div id="netStatus"></div>
+<pre id="netError"></pre>
+</div>
 
 <script>
-// --------------------- Auto scale logic ---------------------
-function autoScale(){
-  const designWidth = 1200;   // matches .wrap max-width
-  const designHeight = 900;   // approximate full content height
-  const scaleX = window.innerWidth / designWidth;
-  const scaleY = window.innerHeight / designHeight;
-  // add a tiny margin factor to avoid exact-touch overflow due to subpixel/scrollbars
-  const marginFactor = 0.99;
-  const scale = Math.min(scaleX, scaleY) * marginFactor;
-  const el = document.querySelector('.wrap');
-  if (el) el.style.transform = `scale(${scale})`;
+/* 自动缩放：根据 1200 × 900 设计稿 */
+function autoScale() {
+    const designW = 1200;
+    const designH = 900;
+
+    const scaleX = window.innerWidth / designW;
+    const scaleY = window.innerHeight / designH;
+
+    const scale = Math.min(scaleX, scaleY);
+
+    document.getElementById("scaleWrap").style.transform =
+        `scale(${scale}) translateY(0)`;
 }
-window.addEventListener('resize', autoScale);
 autoScale();
+window.onresize = autoScale;
 
-// --------------------- Google Sheets fetch & render ---------------------
-const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
+/* === Google Sheet 读取 === */
+
+const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaF7yO2x3kocqA_nTfA0w";
 const GID = "387691548";
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+const GVIZ_URL =
+ `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+
+const SHOW_DEBUG = false;  // ← 如果要调试改成 true
 const INTERVAL_MS = 3000;
-const FIX_BASE_COL = 1; // B column in gviz rows[].c index
-let SHOW_DEBUG = false;
 
-function setStatus(txt){ if (SHOW_DEBUG) document.getElementById('netStatus').innerText = '状态: ' + txt; }
-function setError(txt){ if (SHOW_DEBUG) document.getElementById('netError').innerText = txt; console.error(txt); }
+function setStatus(t){ if(SHOW_DEBUG)document.getElementById("netStatus").innerText="状态："+t; }
+function setError(t){ if(SHOW_DEBUG)document.getElementById("netError").innerText=t; }
 
-function parseGviz(text){ return JSON.parse(text.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '')); }
-function safeCell(rows, r, c){ if (!rows || !rows[r] || !rows[r].c) return null; const cell = rows[r].c[c]; if (!cell) return null; return (cell.v !== undefined) ? cell.v : (cell.f !== undefined ? cell.f : null); }
-function formatScore(v){ if (v === null || v === undefined || v === '') return '—'; const n = Number(v); if (isNaN(n)) return String(v); return n.toFixed(2); }
-
-async function fetchAndRender(){
-  setStatus('请求中...');
-  setError('');
-  try {
-    const res = await fetch(GVIZ_URL, {cache:'no-store'});
-    setStatus('HTTP ' + res.status);
-    if (!res.ok) { const txt = await res.text().catch(()=>'' ); setError('请求失败 HTTP ' + res.status + '\n' + txt.slice(0,800)); return; }
-    const txt = await res.text();
-    const data = parseGviz(txt);
-    if (!data || !data.table || !data.table.rows) { setError('返回数据不包含 table.rows，请检查 Publish 或权限。'); return; }
-    const rows = data.table.rows;
-    const baseCol = FIX_BASE_COL;
-
-    // Map the cells (B1..B8 pattern)
-    document.getElementById('sheetTitle').innerText = safeCell(rows,0,baseCol) || '—';
-    document.getElementById('nameEng').innerText = safeCell(rows,1,baseCol) || '—';
-    document.getElementById('nameChn').innerText = safeCell(rows,2,baseCol) || '—';
-    document.getElementById('club').innerText = safeCell(rows,3,baseCol) || '—';
-
-    // labels row B5/C5/D5 (optional)
-    const labA = safeCell(rows,4,baseCol);
-    const labB = safeCell(rows,4,baseCol+1);
-    const labP = safeCell(rows,4,baseCol+2);
-    if (labA) document.getElementById('labelA').innerText = String(labA);
-    if (labB) document.getElementById('labelB').innerText = String(labB);
-    if (labP) document.getElementById('labelPenalty').innerText = String(labP);
-
-    // values B6/C6/D6 (with fallback to next rows)
-    const aVal = safeCell(rows,5,baseCol) ?? safeCell(rows,6,baseCol);
-    const bVal = safeCell(rows,5,baseCol+1) ?? safeCell(rows,6,baseCol+1);
-    const pVal = safeCell(rows,5,baseCol+2) ?? safeCell(rows,6,baseCol+2);
-
-    document.getElementById('valA').innerText = formatScore(aVal);
-    document.getElementById('valB').innerText = formatScore(bVal);
-    document.getElementById('valPenalty').innerText = (pVal === null ? '—' : formatScore(pVal));
-
-    // final value B8
-    const finalVal = safeCell(rows,7,baseCol) ?? safeCell(rows,6,baseCol) ?? safeCell(rows,5,baseCol);
-    document.getElementById('finalScore').innerText = formatScore(finalVal);
-
-    document.getElementById('updatedAt').innerText = new Date().toLocaleString();
-
-    if (SHOW_DEBUG) {
-      document.getElementById('gvizLink').innerText = GVIZ_URL;
-      document.getElementById('gvizLink').href = GVIZ_URL;
-      const dbg = [
-        'detected baseCol = ' + baseCol,
-        `B1(rows[0][${baseCol}])='${safeCell(rows,0,baseCol)}'`,
-        `B2(rows[1][${baseCol}])='${safeCell(rows,1,baseCol)}'`,
-        `B3(rows[2][${baseCol}])='${safeCell(rows,2,baseCol)}'`,
-        `B4(rows[3][${baseCol}])='${safeCell(rows,3,baseCol)}'`,
-        `B5='${labA}', C5='${labB}', D5='${labP}'`,
-        `B6(rows[5][${baseCol}])='${safeCell(rows,5,baseCol)}'`,
-        `C6(rows[5][${baseCol+1}])='${safeCell(rows,5,baseCol+1)}'`,
-        `D6(rows[5][${baseCol+2}])='${safeCell(rows,5,baseCol+2)}'`,
-        `B8(rows[7][${baseCol}])='${safeCell(rows,7,baseCol)}'`
-      ].join('\n');
-      document.getElementById('netError').innerText = dbg;
-      setStatus('解析并更新成功');
-    }
-
-  } catch (err) {
-    setError('Fetch/解析异常: ' + err.toString());
-  }
+function parseGViz(text){
+    return JSON.parse(text.replace(/^[\s\S]*google.visualization.Query.setResponse\(/,'')
+        .replace(/\);?$/,''));
 }
 
-fetchAndRender();
-setInterval(fetchAndRender, INTERVAL_MS);
+function fmt(v){
+    if(v == null) return "—";
+    let n = Number(v);
+    return isNaN(n) ? "—" : n.toFixed(2);
+}
 
-// --------------------- Optional: toggle debug with "D" key ---------------------
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'd' || e.key === 'D') {
-    SHOW_DEBUG = !SHOW_DEBUG;
-    document.getElementById('debugBox').style.display = SHOW_DEBUG ? 'block' : 'none';
-    document.getElementById('debugBox').setAttribute('aria-hidden', SHOW_DEBUG ? 'false' : 'true');
-  }
-});
+function updateData(){
+    fetch(GVIZ_URL)
+    .then(r=>r.text())
+    .then(t=>{
+        let data = parseGViz(t);
+        let rows = data.table.rows;
+
+        document.getElementById("sheetTitle").innerText = rows[0].c[1].v;
+        document.getElementById("nameEng").innerText   = rows[1].c[1].v;
+        document.getElementById("nameChn").innerText   = rows[2].c[1].v;
+        document.getElementById("club").innerText      = rows[3].c[1].v;
+
+        document.getElementById("valA").innerText      = fmt(rows[5].c[1].v);
+        document.getElementById("valB").innerText      = fmt(rows[5].c[2].v);
+        document.getElementById("valPenalty").innerText= fmt(rows[5].c[3].v);
+
+        document.getElementById("finalScore").innerText= fmt(rows[7].c[1].v);
+
+        document.getElementById("updatedAt").innerText =
+            new Date().toLocaleString();
+    })
+    .catch(err=> setError(err));
+}
+
+updateData();
+setInterval(updateData, INTERVAL_MS);
 </script>
 </body>
 </html>
