@@ -71,103 +71,208 @@
 
 <script>
 /*
-固定映射版本（读取 B1:D8）——直接、稳定、对合并单元格不敏感
-使用说明：
-- 确保你的 Google Sheet 已发布或设置为“Anyone with the link can view”
-- 确保 SPREADSHEET_ID 与 GID 正确（已填你的值）
-- 若要更改刷新间隔，修改 INTERVAL_MS（毫秒）
+更稳健版：在标签行附近智能查找 A/B/裁判/Final 列，然后读取相邻的数值行
+适合表格有合并单元格或左侧有序号列的情况
 */
 const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
 const GID = "387691548";
-const INTERVAL_MS = 3000; // 每 3 秒刷新一次
-
+const INTERVAL_MS = 3000;
 const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 
-// 显示 debug 面板（部署后可改为 false）
 const SHOW_DEBUG = true;
 if (SHOW_DEBUG) {
   const d = document.getElementById('debugBox');
   if (d) { d.style.display='block'; document.getElementById('gvizLink').innerText = GVIZ_URL; document.getElementById('gvizLink').href = GVIZ_URL; }
 }
-
 function setStatus(txt){ if (SHOW_DEBUG) document.getElementById('netStatus').innerText = '状态: ' + txt; }
 function setError(txt){ if (SHOW_DEBUG) document.getElementById('netError').innerText = txt; console.error(txt); }
 
-function safeParseGvizText(txt){
-  // 去掉 gviz 前缀并返回 JSON
-  const jsonText = txt.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '');
+function parseGviz(text){
+  const jsonText = text.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '');
   return JSON.parse(jsonText);
 }
+function cellVal(rows, r, c){
+  const cell = rows[r] && rows[r].c && rows[r].c[c];
+  if (!cell) return null;
+  return (cell.v !== undefined) ? cell.v : (cell.f !== undefined ? cell.f : null);
+}
+function isTextLike(v){
+  if (v === null || v === undefined) return false;
+  const s = String(v).trim();
+  if (s === '') return false;
+  // 不是纯数字则视为文本（姓名、标签等）
+  return isNaN(Number(s));
+}
 
-async function fetchScore(){
+// 在一行中查找包含关键词的列索引（返回 object）
+function findColsInRow(rows, rowIndex){
+  const out = {a:null,b:null,penalty:null,final:null};
+  if (!rows[rowIndex] || !rows[rowIndex].c) return out;
+  const cols = rows[rowIndex].c;
+  for (let j=0;j<cols.length;j++){
+    const v = cols[j] && (cols[j].v !== undefined ? String(cols[j].v) : String(cols[j].f || ''));
+    const low = String(v).toLowerCase();
+    if (!v) continue;
+    if (low.includes('a组')) out.a = j;
+    if (low.includes('b组')) out.b = j;
+    if (low.includes('裁判') || low.includes('扣分') || low.includes('penalty')) out.penalty = j;
+    if (low.includes('final') || low.includes('最终得分')) out.final = j;
+  }
+  return out;
+}
+
+// 从若干候补行里寻找标签列（优先 labelRowHint，然后 labelRowHint-1..+1 等）
+function detectLabelColumns(rows, labelRowHint){
+  // 如果 hint 行有数据，先用 hint
+  let labels = findColsInRow(rows, labelRowHint);
+  if (labels.a !== null || labels.b !== null || labels.penalty !== null || labels.final !== null) return {labels, labelRow: labelRowHint};
+
+  // 向上向下搜索 3 行范围
+  for (let offset = 1; offset <= 3; offset++){
+    // 上
+    if (labelRowHint - offset >= 0){
+      labels = findColsInRow(rows, labelRowHint - offset);
+      if (labels.a !== null || labels.b !== null || labels.penalty !== null || labels.final !== null) return {labels, labelRow: labelRowHint - offset};
+    }
+    // 下
+    if (labelRowHint + offset < rows.length){
+      labels = findColsInRow(rows, labelRowHint + offset);
+      if (labels.a !== null || labels.b !== null || labels.penalty !== null || labels.final !== null) return {labels, labelRow: labelRowHint + offset};
+    }
+  }
+  // 如果仍然没找到，做一次宽容匹配：在所有行找包含 'a组' / 'b组' 的列
+  for (let r=0;r<Math.min(rows.length, 12); r++){
+    labels = findColsInRow(rows, r);
+    if (labels.a !== null || labels.b !== null || labels.penalty !== null || labels.final !== null) return {labels, labelRow: r};
+  }
+  return {labels:{a:null,b:null,penalty:null,final:null}, labelRow: labelRowHint};
+}
+
+function formatScore(v){
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  if (!isNaN(n)) return (n % 1 === 0) ? n.toFixed(0) : n.toFixed(2);
+  return String(v);
+}
+
+async function fetchAndRender(){
   setStatus('请求中...');
   setError('');
   try {
     const res = await fetch(GVIZ_URL, {cache:'no-store'});
     setStatus('HTTP ' + res.status);
     if (!res.ok) {
-      const txt = await res.text().catch(()=>'');
+      const txt = await res.text().catch(()=> '');
       setError('请求失败 HTTP ' + res.status + '\n' + txt.slice(0,800));
       return;
     }
     const txt = await res.text();
-    const data = safeParseGvizText(txt);
+    const data = parseGviz(txt);
     if (!data || !data.table || !data.table.rows) {
-      setError('返回数据不包含 table.rows，请检查表格是否已发布或权限设置。返回片段：\n' + txt.slice(0,500));
+      setError('返回数据不包含 table.rows，请检查发布/权限。返回片段:\n' + txt.slice(0,300));
       return;
     }
     const rows = data.table.rows;
 
-    // 注意：gviz API 的 rows 是从 0 开始，与 sheet 实际行对应时如果你只请求 B:D 区域，索引对应你需要验证。
-    // 这里按之前讨论采用 rows[0] -> 第一行被读取区域（相当于 sheet 的第一被读取行）
-    // 我们假设 rows[0] 对应 B1..D1，rows[1] 对应 B2..D2 ... 以此类推（与你之前的表格截屏一致）
-    const get = (r, c) => {
-      // r, c 都是 0-based
-      const cell = rows[r] && rows[r].c && rows[r].c[c];
-      if (!cell) return '';
-      return (cell.v !== undefined) ? cell.v : (cell.f !== undefined ? cell.f : '');
+    // 1) 尝试获取姓名、中文名、学校（在你之前的表里为 rows[1], rows[2], rows[3]）
+    // 我们用容错：若第一列为空，就尝试下一列
+    function findFirstNonEmptyInRow(rIx){
+      if (!rows[rIx] || !rows[rIx].c) return '';
+      for (let j=0;j<rows[rIx].c.length;j++){
+        const v = cellVal(rows, rIx, j);
+        if (v !== null && String(v).trim() !== '') return String(v);
+      }
+      return '';
+    }
+    const nameEng = findFirstNonEmptyInRow(1) || '—';
+    const nameChn = findFirstNonEmptyInRow(2) || '—';
+    const club = findFirstNonEmptyInRow(3) || '—';
+
+    // 2) 找标签行（默认 hint=4，也就是 B5 行 -> rows[4]）
+    const hint = 4;
+    const {labels, labelRow} = detectLabelColumns(rows, hint);
+
+    // 3) 计算数值行和 final 行的索引（一般 valueRow = labelRow + 1, finalLabelRow = labelRow+2, finalValueRow = labelRow+3）
+    const valueRow = labelRow + 1;
+    const finalLabelRow = labelRow + 2;
+    const finalValueRow = labelRow + 3;
+
+    // 4) 如果 labels 未全部识别，尝试一个简单的备选策略：
+    //    - 在 valueRow 里如果某列为数字且 label 列为空，则把该列猜为相应的 A/B 列（按位置：左中右）
+    const backupCols = {a: null, b: null, penalty: null};
+    if (labels.a === null || labels.b === null || labels.penalty === null) {
+      if (rows[valueRow] && rows[valueRow].c) {
+        const len = rows[valueRow].c.length;
+        // 从左到右尝试把出现数字的列分配到 a/b/penalty（保守策略）
+        let found = 0;
+        for (let j=0;j<len && found < 3;j++){
+          const v = cellVal(rows, valueRow, j);
+          if (v !== null && String(v).trim() !== '' && !isNaN(Number(v))) {
+            if (backupCols.a === null) { backupCols.a = j; found++; continue; }
+            if (backupCols.b === null) { backupCols.b = j; found++; continue; }
+            if (backupCols.penalty === null) { backupCols.penalty = j; found++; continue; }
+          }
+        }
+      }
+    }
+
+    // 使用最终决定的列：优先 labels 中识别出的，否则用备选
+    const aCol = (labels.a !== null) ? labels.a : backupCols.a;
+    const bCol = (labels.b !== null) ? labels.b : backupCols.b;
+    const pCol = (labels.penalty !== null) ? labels.penalty : backupCols.penalty;
+    const finalCol = (labels.final !== null) ? labels.final : null;
+
+    // 写入页面（容错：若某项找不到显示“—”）
+    document.getElementById('nameEng').innerText = nameEng;
+    document.getElementById('nameChn').innerText = nameChn;
+    document.getElementById('club').innerText = club;
+
+    // 标签：优先显示 label 行的文本，否则显示默认
+    const labelText = (r, c, fallback) => {
+      const v = (rows[r] && rows[r].c && rows[r].c[c]) ? (rows[r].c[c].v ?? rows[r].c[c].f ?? '') : '';
+      return (v !== '' && v !== null && v !== undefined) ? String(v) : fallback;
     };
 
-    // 依据 B1:D8 映射：
-    // rows[0] -> B1..D1
-    // rows[1] -> B2..D2
-    // ...
-    document.getElementById('nameEng').innerText = String(get(1,0) || get(1,1) || get(1,2) || '—');
-    document.getElementById('nameChn').innerText = String(get(2,0) || get(2,1) || get(2,2) || '—');
-    document.getElementById('club').innerText = String(get(3,0) || get(3,1) || get(3,2) || '—');
+    document.getElementById('labelA').innerText = (aCol !== null) ? labelText(labelRow, aCol, 'A组得分') : 'A组得分';
+    document.getElementById('labelB').innerText = (bCol !== null) ? labelText(labelRow, bCol, 'B组得分') : 'B组得分';
+    document.getElementById('labelPenalty').innerText = (pCol !== null) ? labelText(labelRow, pCol, '裁判长扣分') : '裁判长扣分';
 
-    document.getElementById('labelA').innerText = String(get(4,0) || 'A组得分');
-    document.getElementById('labelB').innerText = String(get(4,1) || 'B组得分');
-    document.getElementById('labelPenalty').innerText = String(get(4,2) || '裁判长扣分');
+    document.getElementById('valA').innerText = (aCol !== null) ? formatScore(cellVal(rows, valueRow, aCol)) : formatScore(cellVal(rows, valueRow, backupCols.a));
+    document.getElementById('valB').innerText = (bCol !== null) ? formatScore(cellVal(rows, valueRow, bCol)) : formatScore(cellVal(rows, valueRow, backupCols.b));
+    document.getElementById('valPenalty').innerText = (pCol !== null) ? formatScore(cellVal(rows, valueRow, pCol)) : formatScore(cellVal(rows, valueRow, backupCols.penalty));
 
-    document.getElementById('valA').innerText = formatScore(get(5,0));
-    document.getElementById('valB').innerText = formatScore(get(5,1));
-    document.getElementById('valPenalty').innerText = formatScore(get(5,2));
+    // final
+    const finalLabelText = (finalCol !== null) ? labelText(finalLabelRow, finalCol, 'Final Score 最终得分') : (labelText(finalLabelRow, 0, 'Final Score 最终得分'));
+    const finalVal = (finalCol !== null) ? cellVal(rows, finalValueRow, finalCol) : cellVal(rows, finalValueRow, 0);
 
-    document.getElementById('finalLabel').innerText = String(get(6,0) || 'Final Score 最终得分');
-    document.getElementById('finalScore').innerText = formatScore(get(7,0));
+    document.getElementById('finalLabel').innerText = finalLabelText;
+    document.getElementById('finalScore').innerText = formatScore(finalVal);
 
     document.getElementById('updatedAt').innerText = new Date().toLocaleString();
 
-    setStatus('解析并更新成功');
+    // Debug 输出找到的列索引
+    const dbg = [
+      `labelRow: ${labelRow}`,
+      `valueRow: ${valueRow}`,
+      `finalLabelRow: ${finalLabelRow}`,
+      `finalValueRow: ${finalValueRow}`,
+      `aCol: ${aCol}`,
+      `bCol: ${bCol}`,
+      `penaltyCol: ${pCol}`,
+      `finalCol: ${finalCol}`
+    ].join('\n');
+    setStatus('解析并写入成功');
+    if (SHOW_DEBUG) setError('Detected cols:\n' + dbg);
+
   } catch (err) {
     setError('Fetch/解析异常: ' + err.toString());
   }
 }
 
-function formatScore(v){
-  if (v === null || v === undefined || v === '') return '—';
-  const n = Number(v);
-  if (!isNaN(n)) {
-    // 若是整数显示整数，否则显示两位小数
-    return (n % 1 === 0) ? n.toFixed(0) : n.toFixed(2);
-  }
-  return String(v);
-}
-
-// 初次立即拉取并开始定时
-fetchScore();
-setInterval(fetchScore, INTERVAL_MS);
+fetchAndRender();
+setInterval(fetchAndRender, INTERVAL_MS);
 </script>
+
 </body>
 </html>
+
