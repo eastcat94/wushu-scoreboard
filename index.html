@@ -4,256 +4,172 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>实时成绩看板</title>
-
 <style>
-:root{
-    --bg:#071226;
-    --card:#0d1b2a;
-    --accent:#f4c94e;
-    --muted:#97a0b3;
-}
-
-/* 让页面占满屏幕并无滚动条 */
-html, body {
-    height: 100%;
-    margin: 0;
-    overflow: hidden;
-}
-
-/* 全局居中容器 —— 关键 */
-body{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background:var(--bg);
-    font-family:"Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
-    color:#fff;
-}
-
-/* 缩放包裹 */
-#scaleWrap{
+  #scaleWrap {
     transform-origin: top center;
 }
-
-/* 主内容宽度 */
-.wrap{
-    max-width:1200px;
-    margin:0 auto;
-    padding:20px;
-    box-sizing:border-box;
-    text-align:center;
-}
-
-/* Banner */
-header img{
-    max-width:480px;
-    height:auto;
-    display:block;
-    margin:0 auto 25px;
-    border:4px solid #fff;
-}
-
-/* 各种排版 */
-.title{
-    font-size:56px;
-    font-weight:800;
-    margin:10px 0 6px;
-}
-.name-eng{
-    font-size:36px;
-    font-weight:800;
-    color:#fff;
-    margin:6px 0;
-}
-.name-chn{
-    font-size:32px;
-    margin:8px 0;
-    color:var(--muted);
-}
-.club{
-    font-size:20px;
-    color:var(--muted);
-}
-
-.scores-row{
+  body {
     display:flex;
-    gap:18px;
-    justify-content:center;
-    margin-top:26px;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;   /* 可选，让整体垂直居中 */
 }
-
-.score-card{
-    min-width:220px;
-    background:var(--card);
-    padding:25px;
-    border-radius:10px;
-    box-shadow:0 2px 6px rgba(0,0,0,0.2);
-}
-
-.label{
-    font-size:14px;
-    color:var(--muted);
-    margin-bottom:10px;
-}
-.value{
-    font-size:36px;
-    font-weight:900;
-}
-
-/* Final Score */
-.final-label{
-    display:inline-block;
-    background:var(--accent);
-    color:#000;
-    padding:10px 18px;
-    border-radius:8px;
-    margin-top:25px;
-    font-weight:700;
-}
-.final-score{
-    font-size:120px;
-    font-weight:900;
-    color:var(--accent);
-    margin:20px 0 0;
-}
-
-.meta{
-    font-size:13px;
-    color:var(--muted);
-    margin-top:12px;
-}
-
-/* Debug panel */
-.debug{
-    position:fixed;
-    right:12px;
-    top:12px;
-    background:#fff;
-    color:#000;
-    padding:10px;
-    border-radius:8px;
-    z-index:9999;
-    max-width:420px;
-    font-size:12px;
-    overflow:auto;
-    white-space:pre-wrap;
-}
+  :root{--bg:#071226;--card:#0d1b2a;--accent:#f4c94e;--muted:#97a0b3;color-scheme:dark}
+  html,body{height:100%;margin:0;font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;background:var(--bg);color:#fff}
+  .wrap{max-width:1200px;margin:18px auto;padding:28px;box-sizing:border-box}
+  header{text-align:center;margin-bottom:6px}
+  header img{max-width:480px;height:auto;display:inline-block;border:4px solid #fff}
+  .title{font-size:56px;font-weight:800;margin:12px 0 6px;text-align:center}
+  .name-eng{font-size:36px;font-weight:800;text-align:center;margin:6px 0}
+  .name-chn{font-size:32px;text-align:center;margin:6px 0;color:var(--muted)}
+  .club{font-size:20px;text-align:center;margin:6px 0;color:var(--muted)}
+  .scores-row{display:flex;gap:18px;justify-content:center;align-items:stretch;margin-top:26px}
+  .score-card{background:var(--card);padding:26px;border-radius:10px;min-width:220px;box-shadow:0 2px 6px rgba(0,0,0,0.2)}
+  .label{font-size:14px;color:var(--muted);margin-bottom:6px;text-align:center}
+  .value{font-size:36px;font-weight:900;text-align:center}
+  .final-label{display:inline-block;background:var(--accent);color:#000;padding:10px 16px;border-radius:8px;font-weight:700;margin-top:22px}
+  .final-score{font-size:120px;font-weight:900;color:var(--accent);margin:20px 0 8px;text-align:center}
+  .meta{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
+  .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:420px;overflow:auto;white-space:pre-wrap;display:none}
+  @media(max-width:900px){
+    .title{font-size:34px}
+    .final-score{font-size:64px}
+    .scores-row{flex-direction:column}
+  }
 </style>
 </head>
-
 <body>
-<div id="scaleWrap">
+  <div id="scaleWrap">
     <div class="wrap">
 
         <header>
-            <img src="./jun-wei-banner.jpg" id="banner" />
+            <img id="banner" src="./jun-wei-banner.jpg">
         </header>
 
-        <div class="title" id="sheetTitle"></div>
-        <div class="name-eng" id="nameEng"></div>
-        <div class="name-chn" id="nameChn"></div>
-        <div class="club" id="club"></div>
+    <div class="title" id="sheetTitle">—</div>
+    <div class="name-eng" id="nameEng">—</div>
+    <div class="name-chn" id="nameChn">—</div>
+    <div class="club" id="club">—</div>
 
-        <div class="scores-row">
-            <div class="score-card">
-                <div class="label">A组得分</div>
-                <div class="value" id="valA">—</div>
-            </div>
-            <div class="score-card">
-                <div class="label">B组得分</div>
-                <div class="value" id="valB">—</div>
-            </div>
-            <div class="score-card">
-                <div class="label">裁判长扣分</div>
-                <div class="value" id="valPenalty">—</div>
-            </div>
-        </div>
-
-        <div style="margin-top:20px;">
-            <span class="final-label">Final Score 最终得分</span>
-        </div>
-
-        <div class="final-score" id="finalScore">0.00</div>
-        <div class="meta">最后更新时间：<span id="updatedAt"></span></div>
-
+    <div class="scores-row" style="margin-top:20px">
+      <div class="score-card">
+        <div class="label" id="labelA">A组得分</div>
+        <div class="value" id="valA">—</div>
+      </div>
+      <div class="score-card">
+        <div class="label" id="labelB">B组得分</div>
+        <div class="value" id="valB">—</div>
+      </div>
+      <div class="score-card">
+        <div class="label" id="labelPenalty">裁判长扣分</div>
+        <div class="value" id="valPenalty">—</div>
+      </div>
     </div>
-</div>
 
-<!-- Debug Panel -->
-<div class="debug" id="debugBox" style="display:none;">
-<strong>Debug</strong>
-<div id="gvizLink"></div>
-<div id="netStatus"></div>
-<pre id="netError"></pre>
-</div>
+    <div style="text-align:center;margin-top:18px">
+      <span class="final-label" id="finalLabel">Final Score 最终得分</span>
+    </div>
+    <div class="final-score" id="finalScore">—</div>
+
+    <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
+  </div>
+
+  <div class="debug" id="debugBox" >
+    <div><strong>Debug</strong></div>
+    <div>GViz URL: <a id="gvizLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
+    <div id="netStatus">状态: 等待</div>
+    <pre id="netError" style="color:#900"></pre>
+  </div>
 
 <script>
-/* 自动缩放：根据 1200 × 900 设计稿 */
 function autoScale() {
-    const designW = 1200;
-    const designH = 900;
+    const designWidth = 1200;   // 你网页的最大宽度
+    const designHeight = 900;   // 页面高度（可微调）
 
-    const scaleX = window.innerWidth / designW;
-    const scaleY = window.innerHeight / designH;
+    const scaleX = window.innerWidth / designWidth;
+    const scaleY = window.innerHeight / designHeight;
 
     const scale = Math.min(scaleX, scaleY);
 
-    document.getElementById("scaleWrap").style.transform =
-        `scale(${scale}) translateY(0)`;
+    document.getElementById("scaleWrap").style.transform = `scale(${scale})`;
 }
+
 autoScale();
 window.onresize = autoScale;
-
-/* === Google Sheet 读取 === */
-
-const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaF7yO2x3kocqA_nTfA0w";
+/* Same logic as the previous file but with debug disabled */
+const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
 const GID = "387691548";
-const GVIZ_URL =
- `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
-
-const SHOW_DEBUG = false;  // ← 如果要调试改成 true
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 const INTERVAL_MS = 3000;
+const FIX_BASE_COL = 1; // B 列 index in gviz
+const SHOW_DEBUG = false; // debug turned off
 
-function setStatus(t){ if(SHOW_DEBUG)document.getElementById("netStatus").innerText="状态："+t; }
-function setError(t){ if(SHOW_DEBUG)document.getElementById("netError").innerText=t; }
+function setStatus(txt){ if (SHOW_DEBUG) document.getElementById('netStatus').innerText = '状态: ' + txt; }
+function setError(txt){ if (SHOW_DEBUG) document.getElementById('netError').innerText = txt; console.error(txt); }
 
-function parseGViz(text){
-    return JSON.parse(text.replace(/^[\s\S]*google.visualization.Query.setResponse\(/,'')
-        .replace(/\);?$/,''));
+function parseGviz(text){
+  return JSON.parse(text.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, ''));
+}
+function safeCell(rows, r, c){
+  if (!rows || !rows[r] || !rows[r].c) return null;
+  const cell = rows[r].c[c];
+  if (!cell) return null;
+  return (cell.v !== undefined) ? cell.v : (cell.f !== undefined ? cell.f : null);
+}
+function formatScore(v){
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
+  return n.toFixed(2); // always two decimals
 }
 
-function fmt(v){
-    if(v == null) return "—";
-    let n = Number(v);
-    return isNaN(n) ? "—" : n.toFixed(2);
+async function fetchAndRender(){
+  if (SHOW_DEBUG) document.getElementById('debugBox').style.display = 'block';
+  try {
+    const res = await fetch(GVIZ_URL, {cache:'no-store'});
+    const txt = await res.text();
+    const data = parseGviz(txt);
+    const rows = data.table.rows;
+    const baseCol = FIX_BASE_COL;
+
+    document.getElementById('sheetTitle').innerText = safeCell(rows,0,baseCol) || '—';
+    document.getElementById('nameEng').innerText = safeCell(rows,1,baseCol) || '—';
+    document.getElementById('nameChn').innerText = safeCell(rows,2,baseCol) || '—';
+    document.getElementById('club').innerText = safeCell(rows,3,baseCol) || '—';
+
+    const labA = safeCell(rows,4,baseCol);
+    const labB = safeCell(rows,4,baseCol+1);
+    const labP = safeCell(rows,4,baseCol+2);
+    if (labA) document.getElementById('labelA').innerText = String(labA);
+    if (labB) document.getElementById('labelB').innerText = String(labB);
+    if (labP) document.getElementById('labelPenalty').innerText = String(labP);
+
+    const aVal = safeCell(rows,5,baseCol) ?? safeCell(rows,6,baseCol);
+    const bVal = safeCell(rows,5,baseCol+1) ?? safeCell(rows,6,baseCol+1);
+    const pVal = safeCell(rows,5,baseCol+2) ?? safeCell(rows,6,baseCol+2);
+
+    document.getElementById('valA').innerText = formatScore(aVal);
+    document.getElementById('valB').innerText = formatScore(bVal);
+    document.getElementById('valPenalty').innerText = formatScore(pVal);
+
+    const finalVal = safeCell(rows,7,baseCol) ?? safeCell(rows,6,baseCol) ?? safeCell(rows,5,baseCol);
+    document.getElementById('finalScore').innerText = formatScore(finalVal);
+
+    document.getElementById('updatedAt').innerText = new Date().toLocaleString();
+
+  } catch (err) {
+    console.error(err);
+  }
 }
 
-function updateData(){
-    fetch(GVIZ_URL)
-    .then(r=>r.text())
-    .then(t=>{
-        let data = parseGViz(t);
-        let rows = data.table.rows;
-
-        document.getElementById("sheetTitle").innerText = rows[0].c[1].v;
-        document.getElementById("nameEng").innerText   = rows[1].c[1].v;
-        document.getElementById("nameChn").innerText   = rows[2].c[1].v;
-        document.getElementById("club").innerText      = rows[3].c[1].v;
-
-        document.getElementById("valA").innerText      = fmt(rows[5].c[1].v);
-        document.getElementById("valB").innerText      = fmt(rows[5].c[2].v);
-        document.getElementById("valPenalty").innerText= fmt(rows[5].c[3].v);
-
-        document.getElementById("finalScore").innerText= fmt(rows[7].c[1].v);
-
-        document.getElementById("updatedAt").innerText =
-            new Date().toLocaleString();
-    })
-    .catch(err=> setError(err));
-}
-
-updateData();
-setInterval(updateData, INTERVAL_MS);
+fetchAndRender();
+setInterval(fetchAndRender, INTERVAL_MS);
 </script>
+        </div> <!-- end wrap -->
+    </div> <!-- end scaleWrap -->
 </body>
 </html>
+
+
+
+
