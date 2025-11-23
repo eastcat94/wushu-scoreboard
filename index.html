@@ -1,257 +1,49 @@
-<!doctype html>
-<html lang="zh">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>实时成绩看板</title>
-<style>
-  :root{--bg:#071226;--card:#0d1b2a;--accent:#f4c94e;--muted:#97a0b3;color-scheme:dark}
-  html,body{height:100%;margin:0;font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;background:var(--bg);color:#fff}
-  .wrap{max-width:1200px;margin:18px auto;padding:28px}
-  header{text-align:center;margin-bottom:4px}
-  header img{max-width:420px;height:auto;display:inline-block}
-  .title{font-size:44px;font-weight:800;margin:8px 0 30px;text-align:center}
-  .center{max-width:960px;margin:0 auto;text-align:center}
-  .name-eng{font-size:36px;font-weight:800;margin:6px 0}
-  .name-chn{font-size:28px;margin:6px 0;color:var(--muted)}
-  .club{font-size:18px;color:var(--muted);margin-bottom:22px}
-  .scores-row{display:flex;gap:18px;justify-content:center;align-items:stretch;margin-top:18px}
-  .score-card{background:var(--card);padding:20px;border-radius:8px;min-width:200px}
-  .label{font-size:14px;color:var(--muted);margin-bottom:6px;text-align:center}
-  .value{font-size:32px;font-weight:900;text-align:center}
-  .final-label{display:inline-block;background:var(--accent);color:#000;padding:8px 14px;border-radius:8px;font-weight:700;margin-top:22px}
-  .final-score{font-size:180px;font-weight:900;color:var(--accent);margin:20px 0 8px}
-  .meta{font-size:13px;color:var(--muted);margin-top:6px}
-  .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:360px}
-  @media(max-width:800px){ .final-score{font-size:96px} .scores-row{flex-direction:column} .wrap{padding:12px}}
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <header>
-      <img id="banner" src="./jun-wei-banner.jpg" alt="banner" />
-    </header>
-
-    <div class="title">自选长拳</div>
-
-    <div class="center">
-      <div id="nameEng" class="name-eng">—</div>
-      <div id="nameChn" class="name-chn">—</div>
-      <div id="club" class="club">—</div>
-
-      <div class="scores-row">
-        <div class="score-card">
-          <div class="label" id="labelA">A组得分</div>
-          <div class="value" id="valA">—</div>
-        </div>
-        <div class="score-card">
-          <div class="label" id="labelB">B组得分</div>
-          <div class="value" id="valB">—</div>
-        </div>
-        <div class="score-card">
-          <div class="label" id="labelPenalty">裁判长扣分</div>
-          <div class="value" id="valPenalty">—</div>
-        </div>
-      </div>
-
-      <div class="final-label" id="finalLabel">Final Score 最终得分</div>
-      <div class="final-score" id="finalScore">—</div>
-
-      <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
-    </div>
-  </div>
-
-  <div class="debug" id="debugBox" style="display:none">
-    <div><strong>Debug</strong></div>
-    <div>GViz URL: <a id="gvizLink" href="#" target="_blank"></a></div>
-    <div id="netStatus">状态: 等待</div>
-    <pre id="netError" style="white-space:pre-wrap;color:#900"></pre>
-  </div>
-
-<!-- 下面把你上传的脚本完整放进来（这是你之前的智能映射脚本） -->
 <script>
-/* 智能映射版 fetch + applyTable
-   - 自动跳过左侧序号列（若存在）
-   - 在标签行里查找包含关键词的列来确定 A/B/penalty 列
-   - 映射 B2..D8 → 页面
-*/
 const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
 const GID = "387691548";
-const INTERVAL_MS = 5000;
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
-const SHOW_DEBUG = true;
+const INTERVAL_MS = 3000;
 
-if (SHOW_DEBUG) {
-  const d = document.getElementById('debugBox');
-  if (d) { d.style.display='block'; document.getElementById('gvizLink').innerText = GVIZ_URL; document.getElementById('gvizLink').href = GVIZ_URL; }
-}
+const GVIZ_URL =
+  `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 
-function setStatus(txt){ if (SHOW_DEBUG) document.getElementById('netStatus').innerText = '状态: ' + txt; }
-function setError(txt){ if (SHOW_DEBUG) document.getElementById('netError').innerText = txt; console.error(txt); }
-
-function safeCellRaw(rows, r, c){
-  if (!rows || !rows[r] || !rows[r].c) return null;
-  const cell = rows[r].c[c];
-  if (!cell) return null;
-  if (cell.v !== undefined) return cell.v;
-  if (cell.f !== undefined) return cell.f;
-  return null;
-}
-
-function isPureNumber(x){
-  if (x === null || x === undefined) return false;
-  const s = String(x).trim();
-  if (s === '') return false;
-  return !isNaN(Number(s));
-}
-
-function findFirstTextColInRow(rows, rowIndex){
-  if (!rows || !rows[rowIndex] || !rows[rowIndex].c) return null;
-  const cols = rows[rowIndex].c;
-  for (let j=0;j<cols.length;j++){
-    const v = cols[j] && (cols[j].v !== undefined ? cols[j].v : cols[j].f);
-    if (v === null || v === undefined) continue;
-    if (!isPureNumber(v)) return j;
-  }
-  return null;
-}
-
-function findLabelCols(rows, rowIndex){
-  const result = {aCol: null, bCol: null, penaltyCol: null, finalLabelCol: null};
-  if (!rows || !rows[rowIndex] || !rows[rowIndex].c) return result;
-  const cols = rows[rowIndex].c;
-  for (let j=0;j<cols.length;j++){
-    const v = cols[j] && (cols[j].v !== undefined ? String(cols[j].v) : String(cols[j].f || ''));
-    if (!v) continue;
-    const low = v.toLowerCase();
-    if (low.indexOf('a组') !== -1 || low.indexOf('a组得分') !== -1 || low.indexOf('a组') !== -1) result.aCol = j;
-    if (low.indexOf('b组') !== -1 || low.indexOf('b组得分') !== -1) result.bCol = j;
-    if (low.indexOf('裁判') !== -1 || low.indexOf('扣分') !== -1 || low.indexOf('penalty') !== -1) result.penaltyCol = j;
-    if (low.indexOf('final') !== -1 || low.indexOf('最终得分') !== -1) result.finalLabelCol = j;
-  }
-  return result;
-}
-
-function formatScore(v){
-  if (v === null || v === undefined || v === '') return '—';
-  const n = Number(v);
-  if (!isNaN(n)) {
-    return (n % 1 === 0) ? n.toFixed(0) : n.toFixed(2);
-  }
-  return String(v);
-}
-
-function applyTableSmart(table){
-  const rows = (table && table.rows) ? table.rows : [];
-  if (!rows || rows.length < 2) {
-    setError('表格行数太少，无法映射（需要至少 8 行预期结构）');
-    return;
-  }
-
-  const nameEngCol = findFirstTextColInRow(rows, 1);
-  const nameEng = (nameEngCol !== null) ? safeCellRaw(rows,1,nameEngCol) : safeCellRaw(rows,1,0);
-
-  const nameChnCol = findFirstTextColInRow(rows, 2);
-  const nameChn = (nameChnCol !== null) ? safeCellRaw(rows,2,nameChnCol) : safeCellRaw(rows,2,0);
-
-  const clubCol = findFirstTextColInRow(rows, 3);
-  const club = (clubCol !== null) ? safeCellRaw(rows,3,clubCol) : safeCellRaw(rows,3,0);
-
-  let labelRowIndex = 4;
-  if (!rows[labelRowIndex] || !rows[labelRowIndex].c) {
-    for (let r = 0; r < Math.min(rows.length, 10); r++){
-      const rr = rows[r];
-      if (!rr || !rr.c) continue;
-      const joined = rr.c.map(x => x && (x.v !== undefined ? String(x.v) : String(x.f || ''))).join(' ').toLowerCase();
-      if (joined.indexOf('a组') !== -1 || joined.indexOf('final') !== -1 || joined.indexOf('裁判') !== -1) { labelRowIndex = r; break; }
-    }
-  }
-  const labels = findLabelCols(rows, labelRowIndex);
-
-  if (!labels.aCol || !labels.bCol || !labels.penaltyCol) {
-    const rr = rows[labelRowIndex] && rows[labelRowIndex].c || [];
-    for (let j=0;j<rr.length;j++){
-      const v = rr[j] && (rr[j].v !== undefined ? String(rr[j].v) : String(rr[j].f || ''));
-      if (!v) continue;
-      const low = v.toLowerCase();
-      if (!labels.aCol && (low.indexOf('a组') !== -1 || low.indexOf('a 组') !== -1)) labels.aCol = j;
-      if (!labels.bCol && (low.indexOf('b组') !== -1 || low.indexOf('b 组') !== -1)) labels.bCol = j;
-      if (!labels.penaltyCol && (low.indexOf('裁判') !== -1 || low.indexOf('扣分') !== -1 || low.indexOf('penalty') !== -1)) labels.penaltyCol = j;
-      if (!labels.finalLabelCol && (low.indexOf('final') !== -1 || low.indexOf('最终得分') !== -1)) labels.finalLabelCol = j;
-    }
-  }
-
-  const valueRowIndex = labelRowIndex + 1;
-  const finalLabelRowIndex = labelRowIndex + 2;
-  const finalValueRowIndex = labelRowIndex + 3;
-
-  const valAraw = (labels.aCol !== null) ? safeCellRaw(rows, valueRowIndex, labels.aCol) : null;
-  const valBraw = (labels.bCol !== null) ? safeCellRaw(rows, valueRowIndex, labels.bCol) : null;
-  const valPenaltyRaw = (labels.penaltyCol !== null) ? safeCellRaw(rows, valueRowIndex, labels.penaltyCol) : null;
-
-  const finalLabelRaw = (labels.finalLabelCol !== null) ? safeCellRaw(rows, finalLabelRowIndex, labels.finalLabelCol) : null;
-  const finalValueRaw = safeCellRaw(rows, finalValueRowIndex, labels.finalLabelCol !== null ? labels.finalLabelCol : 0);
-
-  document.getElementById('nameEng').innerText = nameEng || '—';
-  document.getElementById('nameChn').innerText = nameChn || '—';
-  document.getElementById('club').innerText = club || '—';
-
-  document.getElementById('labelA').innerText = safeCellRaw(rows,labelRowIndex, labels.aCol) || 'A组得分';
-  document.getElementById('labelB').innerText = safeCellRaw(rows,labelRowIndex, labels.bCol) || 'B组得分';
-  document.getElementById('labelPenalty').innerText = safeCellRaw(rows,labelRowIndex, labels.penaltyCol) || '裁判长扣分';
-
-  document.getElementById('valA').innerText = formatScore(valAraw);
-  document.getElementById('valB').innerText = formatScore(valBraw);
-  document.getElementById('valPenalty').innerText = formatScore(valPenaltyRaw);
-
-  if (finalLabelRaw) document.getElementById('finalLabel').innerText = finalLabelRaw;
-  document.getElementById('finalScore').innerText = formatScore(finalValueRaw);
-
-  document.getElementById('updatedAt').innerText = (new Date()).toLocaleString();
-
-  const dbg = [
-    `nameEngCol detected: ${nameEngCol}`,
-    `nameChnCol detected: ${nameChnCol}`,
-    `clubCol detected: ${clubCol}`,
-    `labelRowIndex: ${labelRowIndex}`,
-    `aCol: ${labels.aCol}`,
-    `bCol: ${labels.bCol}`,
-    `penaltyCol: ${labels.penaltyCol}`,
-    `finalLabelCol: ${labels.finalLabelCol}`,
-    `valueRowIndex: ${valueRowIndex}`,
-    `finalLabelRowIndex: ${finalLabelRowIndex}`,
-    `finalValueRowIndex: ${finalValueRowIndex}`
-  ].join('\n');
-  setStatus('解析并写入成功');
-  if (SHOW_DEBUG) setError('Detected cols:\n' + dbg);
-}
-
-async function fetchAndUpdate(){
-  setStatus('请求中...');
-  setError('');
+async function fetchScore() {
   try {
-    const res = await fetch(GVIZ_URL, {cache:'no-store'});
-    setStatus('HTTP ' + res.status);
-    if (!res.ok) {
-      const txt = await res.text().catch(()=> '');
-      setError('请求失败: HTTP ' + res.status + '\n' + txt.slice(0,800));
-      return;
-    }
-    const txt = await res.text();
-    const jsonText = txt.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '');
+    const res = await fetch(GVIZ_URL, { cache: "no-store" });
+    const text = await res.text();
+    const jsonText = text.replace(/^[\s\S]*?setResponse\(/, "").replace(/\);?\s*$/, "");
     const data = JSON.parse(jsonText);
-    if (!data || !data.table) {
-      setError('返回数据不包含 table，可能未发布或权限问题，返回片段:\n' + txt.slice(0,500));
-      return;
-    }
-    applyTableSmart(data.table);
+
+    const rows = data.table.rows;
+
+    // 直接固定 B1:D8
+    const get = (r, c) => {
+      const cell = rows[r]?.c[c];
+      if (!cell) return "";
+      return cell.v ?? cell.f ?? "";
+    };
+
+    document.getElementById("nameEng").innerText = get(1, 1);
+    document.getElementById("nameChn").innerText = get(2, 1);
+    document.getElementById("club").innerText = get(3, 1);
+
+    document.getElementById("labelA").innerText = get(4, 1);
+    document.getElementById("labelB").innerText = get(4, 2);
+    document.getElementById("labelPenalty").innerText = get(4, 3);
+
+    document.getElementById("valA").innerText = get(5, 1);
+    document.getElementById("valB").innerText = get(5, 2);
+    document.getElementById("valPenalty").innerText = get(5, 3);
+
+    document.getElementById("finalLabel").innerText = get(6, 1);
+    document.getElementById("finalScore").innerText = get(7, 1);
+
+    document.getElementById("updatedAt").innerText =
+      new Date().toLocaleString();
   } catch (err) {
-    setError('Fetch/解析异常: ' + err.toString());
+    console.error("Error:", err);
   }
 }
 
-fetchAndUpdate();
-setInterval(fetchAndUpdate, INTERVAL_MS);
+fetchScore();
+setInterval(fetchScore, INTERVAL_MS);
 </script>
-</body>
-</html>
