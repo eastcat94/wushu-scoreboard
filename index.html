@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>实时成绩看板</title>
 <style>
-  html {
-    zoom: 1.3;
+  #scaleWrap {
+    transform-origin: top center;
 }
   body {
     display:flex;
@@ -39,10 +39,12 @@
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <img id="banner" src="./jun-wei-banner.jpg" alt="banner" />
-    </header>
+  <div id="scaleWrap">
+    <div class="wrap">
+
+        <header>
+            <img id="banner" src="./jun-wei-banner.jpg">
+        </header>
 
     <div class="title" id="sheetTitle">—</div>
     <div class="name-eng" id="nameEng">—</div>
@@ -80,6 +82,20 @@
   </div>
 
 <script>
+function autoScale() {
+    const designWidth = 1200;   // 你网页的最大宽度
+    const designHeight = 900;   // 页面高度（可微调）
+
+    const scaleX = window.innerWidth / designWidth;
+    const scaleY = window.innerHeight / designHeight;
+
+    const scale = Math.min(scaleX, scaleY);
+
+    document.getElementById("scaleWrap").style.transform = `scale(${scale})`;
+}
+
+autoScale();
+window.onresize = autoScale;
 /* Same logic as the previous file but with debug disabled */
 const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
 const GID = "387691548";
@@ -149,8 +165,11 @@ async function fetchAndRender(){
 fetchAndRender();
 setInterval(fetchAndRender, INTERVAL_MS);
 </script>
+        </div> <!-- end wrap -->
+    </div> <!-- end scaleWrap -->
 </body>
 </html>
+
 
 
 
