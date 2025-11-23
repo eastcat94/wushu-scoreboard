@@ -7,61 +7,76 @@
 <style>
   :root{--bg:#071226;--card:#0d1b2a;--accent:#f4c94e;--muted:#97a0b3;color-scheme:dark}
   html,body{height:100%;margin:0;font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;background:var(--bg);color:#fff}
-  .wrap{max-width:1200px;margin:18px auto;padding:28px}
-  header{text-align:center;margin-bottom:4px}
-  header img{max-width:420px;height:auto;display:inline-block}
-  .title{font-size:44px;font-weight:800;margin:8px 0 30px;text-align:center}
-  .center{max-width:960px;margin:0 auto;text-align:center}
-  .name-eng{font-size:36px;font-weight:800;margin:6px 0}
-  .name-chn{font-size:28px;margin:6px 0;color:var(--muted)}
-  .club{font-size:18px;color:var(--muted);margin-bottom:22px}
-  .scores-row{display:flex;gap:18px;justify-content:center;align-items:stretch;margin-top:18px}
-  .score-card{background:var(--card);padding:20px;border-radius:8px;min-width:200px}
+  .wrap{max-width:1280px;margin:18px auto;padding:28px;box-sizing:border-box}
+  header{text-align:center;margin-bottom:6px}
+  header img{max-width:480px;height:auto;display:inline-block;border:4px solid #fff}
+  .title{font-size:56px;font-weight:800;margin:12px 0 6px;text-align:center}
+  .top-number{font-size:48px;font-weight:700;text-align:center;margin:6px 0}
+  .name-eng{font-size:36px;font-weight:800;text-align:center;margin:6px 0}
+  .name-chn{font-size:32px;text-align:center;margin:6px 0;color:var(--muted)}
+  .club{font-size:20px;text-align:center;margin:6px 0;color:var(--muted)}
+  .scores-row{display:flex;gap:18px;justify-content:center;align-items:stretch;margin-top:26px}
+  .score-card{background:var(--card);padding:26px;border-radius:10px;min-width:220px;box-shadow:0 2px 6px rgba(0,0,0,0.2)}
   .label{font-size:14px;color:var(--muted);margin-bottom:6px;text-align:center}
-  .value{font-size:32px;font-weight:900;text-align:center}
-  .final-label{display:inline-block;background:var(--accent);color:#000;padding:8px 14px;border-radius:8px;font-weight:700;margin-top:22px}
-  .final-score{font-size:180px;font-weight:900;color:var(--accent);margin:20px 0 8px}
-  .meta{font-size:13px;color:var(--muted);margin-top:6px}
+  .value{font-size:36px;font-weight:900;text-align:center}
+  .final-label{display:inline-block;background:var(--accent);color:#000;padding:10px 16px;border-radius:8px;font-weight:700;margin-top:22px}
+  .final-score{font-size:120px;font-weight:900;color:var(--accent);margin:20px 0 8px;text-align:center}
+  .meta{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
   .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:420px;overflow:auto}
-  @media(max-width:800px){ .final-score{font-size:96px} .scores-row{flex-direction:column} .wrap{padding:12px}}
+  @media(max-width:900px){
+    .title{font-size:34px}
+    .final-score{font-size:64px}
+    .scores-row{flex-direction:column}
+  }
 </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <!-- 请把 repo 中的 banner 文件名放在同目录，或改为公网 URL -->
+      <!-- 如果你上传有 banner，请把文件名改成这里的 src，或改为线上 URL -->
       <img id="banner" src="./jun-wei-banner.jpg" alt="banner" />
     </header>
 
-    <div class="title">自选长拳</div>
+    <!-- 第一排：B1（将被覆盖为 sheet 的 B1 文本） -->
+    <div class="title" id="sheetTitle">—</div>
 
-    <div class="center">
-      <div id="nameEng" class="name-eng">—</div>
-      <div id="nameChn" class="name-chn">—</div>
-      <div id="club" class="club">—</div>
+    <!-- 第二排：B2 英文名 -->
+    <div class="name-eng" id="nameEng">—</div>
 
-      <div class="scores-row">
-        <div class="score-card">
-          <div class="label" id="labelA">A组得分</div>
-          <div class="value" id="valA">—</div>
-        </div>
-        <div class="score-card">
-          <div class="label" id="labelB">B组得分</div>
-          <div class="value" id="valB">—</div>
-        </div>
-        <div class="score-card">
-          <div class="label" id="labelPenalty">裁判长扣分</div>
-          <div class="value" id="valPenalty">—</div>
-        </div>
+    <!-- 第三排：B3 中文名 -->
+    <div class="name-chn" id="nameChn">—</div>
+
+    <!-- 第四排：B4 学校 -->
+    <div class="club" id="club">—</div>
+
+    <!-- 第五排：固定标题（页面固定显示） -->
+    <div class="scores-row" style="margin-top:18px">
+      <div class="score-card">
+        <div class="label">A组得分</div>
+        <div class="value" id="valA">—</div>
       </div>
-
-      <div class="final-label" id="finalLabel">Final Score 最终得分</div>
-      <div class="final-score" id="finalScore">—</div>
-
-      <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
+      <div class="score-card">
+        <div class="label">Final Score 最终得分</div>
+        <div class="value" id="valFinalSmall">—</div>
+      </div>
+      <div class="score-card">
+        <div class="label">B组得分</div>
+        <div class="value" id="valB">—</div>
+      </div>
     </div>
+
+    <!-- 第七排：黄色固定方块 -->
+    <div style="text-align:center;margin-top:18px">
+      <span class="final-label">Final Score 最终得分</span>
+    </div>
+
+    <!-- 第八排：最终大分（B8） -->
+    <div class="final-score" id="finalScore">—</div>
+
+    <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
   </div>
 
+  <!-- Debug 面板（部署时可折叠或设为 false） -->
   <div class="debug" id="debugBox" style="display:none">
     <div><strong>Debug</strong></div>
     <div>GViz URL: <a id="gvizLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
@@ -71,83 +86,52 @@
 
 <script>
 /*
-更稳健版：在标签行附近智能查找 A/B/裁判/Final 列，然后读取相邻的数值行
-适合表格有合并单元格或左侧有序号列的情况
+全新从头实现（固定映射）
+映射（你最后确认的）：
+ - B1 -> 页面第一排 title (rows[0].c[0])
+ - B2 -> rows[1].c[0] -> 英文名 (nameEng)
+ - B3 -> rows[2].c[0] -> 中文名 (nameChn)
+ - B4 -> rows[3].c[0] -> 学校 (club)
+ - 第五排 页面固定显示 A组/B组/裁判长扣分（不从 sheet 读取）
+ - 第六排数值：
+     B6 -> rows[5].c[0]  (A组分数)
+     C6 -> rows[5].c[1]  (B组分数)
+     C7 -> rows[6].c[1]  (裁判长扣分)  <-- 按你指定使用C7
+ - 第七排 页面固定黄色方块文本（Final Score 最终得分）
+ - 第八排最终分数：B8 -> rows[7].c[0]
+先决条件：请确保你的 Google Sheet 已 Publish to the web 或 Share 为 Anyone with link can view
 */
+
 const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
 const GID = "387691548";
-const INTERVAL_MS = 3000;
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+const INTERVAL_MS = 3000; // 刷新间隔（毫秒）
 
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 const SHOW_DEBUG = true;
+
+// 显示 debug 面板并填入 gviz URL
 if (SHOW_DEBUG) {
   const d = document.getElementById('debugBox');
-  if (d) { d.style.display='block'; document.getElementById('gvizLink').innerText = GVIZ_URL; document.getElementById('gvizLink').href = GVIZ_URL; }
+  if (d) {
+    d.style.display = 'block';
+    document.getElementById('gvizLink').innerText = GVIZ_URL;
+    document.getElementById('gvizLink').href = GVIZ_URL;
+  }
 }
+
 function setStatus(txt){ if (SHOW_DEBUG) document.getElementById('netStatus').innerText = '状态: ' + txt; }
 function setError(txt){ if (SHOW_DEBUG) document.getElementById('netError').innerText = txt; console.error(txt); }
 
-function parseGviz(text){
-  const jsonText = text.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '');
+function parseGvizText(txt){
+  const jsonText = txt.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, '');
   return JSON.parse(jsonText);
 }
-function cellVal(rows, r, c){
-  const cell = rows[r] && rows[r].c && rows[r].c[c];
+function safeCell(rows, r, c){
+  if (!rows || !rows[r] || !rows[r].c) return null;
+  const cell = rows[r].c[c];
   if (!cell) return null;
   return (cell.v !== undefined) ? cell.v : (cell.f !== undefined ? cell.f : null);
 }
-function isTextLike(v){
-  if (v === null || v === undefined) return false;
-  const s = String(v).trim();
-  if (s === '') return false;
-  // 不是纯数字则视为文本（姓名、标签等）
-  return isNaN(Number(s));
-}
-
-// 在一行中查找包含关键词的列索引（返回 object）
-function findColsInRow(rows, rowIndex){
-  const out = {a:null,b:null,penalty:null,final:null};
-  if (!rows[rowIndex] || !rows[rowIndex].c) return out;
-  const cols = rows[rowIndex].c;
-  for (let j=0;j<cols.length;j++){
-    const v = cols[j] && (cols[j].v !== undefined ? String(cols[j].v) : String(cols[j].f || ''));
-    const low = String(v).toLowerCase();
-    if (!v) continue;
-    if (low.includes('a组')) out.a = j;
-    if (low.includes('b组')) out.b = j;
-    if (low.includes('裁判') || low.includes('扣分') || low.includes('penalty')) out.penalty = j;
-    if (low.includes('final') || low.includes('最终得分')) out.final = j;
-  }
-  return out;
-}
-
-// 从若干候补行里寻找标签列（优先 labelRowHint，然后 labelRowHint-1..+1 等）
-function detectLabelColumns(rows, labelRowHint){
-  // 如果 hint 行有数据，先用 hint
-  let labels = findColsInRow(rows, labelRowHint);
-  if (labels.a !== null || labels.b !== null || labels.penalty !== null || labels.final !== null) return {labels, labelRow: labelRowHint};
-
-  // 向上向下搜索 3 行范围
-  for (let offset = 1; offset <= 3; offset++){
-    // 上
-    if (labelRowHint - offset >= 0){
-      labels = findColsInRow(rows, labelRowHint - offset);
-      if (labels.a !== null || labels.b !== null || labels.penalty !== null || labels.final !== null) return {labels, labelRow: labelRowHint - offset};
-    }
-    // 下
-    if (labelRowHint + offset < rows.length){
-      labels = findColsInRow(rows, labelRowHint + offset);
-      if (labels.a !== null || labels.b !== null || labels.penalty !== null || labels.final !== null) return {labels, labelRow: labelRowHint + offset};
-    }
-  }
-  // 如果仍然没找到，做一次宽容匹配：在所有行找包含 'a组' / 'b组' 的列
-  for (let r=0;r<Math.min(rows.length, 12); r++){
-    labels = findColsInRow(rows, r);
-    if (labels.a !== null || labels.b !== null || labels.penalty !== null || labels.final !== null) return {labels, labelRow: r};
-  }
-  return {labels:{a:null,b:null,penalty:null,final:null}, labelRow: labelRowHint};
-}
-
 function formatScore(v){
   if (v === null || v === undefined || v === '') return '—';
   const n = Number(v);
@@ -162,107 +146,59 @@ async function fetchAndRender(){
     const res = await fetch(GVIZ_URL, {cache:'no-store'});
     setStatus('HTTP ' + res.status);
     if (!res.ok) {
-      const txt = await res.text().catch(()=> '');
+      const txt = await res.text().catch(()=>'');
       setError('请求失败 HTTP ' + res.status + '\n' + txt.slice(0,800));
       return;
     }
     const txt = await res.text();
-    const data = parseGviz(txt);
+    const data = parseGvizText(txt);
     if (!data || !data.table || !data.table.rows) {
-      setError('返回数据不包含 table.rows，请检查发布/权限。返回片段:\n' + txt.slice(0,300));
+      setError('返回数据缺少 table.rows，请检查 sheet 是否已发布或权限。返回片段:\n' + (txt||'').slice(0,300));
       return;
     }
     const rows = data.table.rows;
 
-    // 1) 尝试获取姓名、中文名、学校（在你之前的表里为 rows[1], rows[2], rows[3]）
-    // 我们用容错：若第一列为空，就尝试下一列
-    function findFirstNonEmptyInRow(rIx){
-      if (!rows[rIx] || !rows[rIx].c) return '';
-      for (let j=0;j<rows[rIx].c.length;j++){
-        const v = cellVal(rows, rIx, j);
-        if (v !== null && String(v).trim() !== '') return String(v);
-      }
-      return '';
-    }
-    const nameEng = findFirstNonEmptyInRow(1) || '—';
-    const nameChn = findFirstNonEmptyInRow(2) || '—';
-    const club = findFirstNonEmptyInRow(3) || '—';
+    // 映射并写入 DOM（按你指定的单元格）
+    // B1 -> rows[0].c[0]
+    const B1 = safeCell(rows,0,0);
+    document.getElementById('sheetTitle').innerText = (B1 && String(B1).trim() !== '') ? String(B1) : '—';
 
-    // 2) 找标签行（默认 hint=4，也就是 B5 行 -> rows[4]）
-    const hint = 4;
-    const {labels, labelRow} = detectLabelColumns(rows, hint);
+    // B2 / B3 / B4
+    document.getElementById('nameEng').innerText = String(safeCell(rows,1,0) || '—');
+    document.getElementById('nameChn').innerText = String(safeCell(rows,2,0) || '—');
+    document.getElementById('club').innerText = String(safeCell(rows,3,0) || '—');
 
-    // 3) 计算数值行和 final 行的索引（一般 valueRow = labelRow + 1, finalLabelRow = labelRow+2, finalValueRow = labelRow+3）
-    const valueRow = labelRow + 1;
-    const finalLabelRow = labelRow + 2;
-    const finalValueRow = labelRow + 3;
+    // 第五排固定标题（不读取）
+    // 第六排读取 B6, C6, C7
+    const rawA = safeCell(rows,5,0); // B6
+    const rawB = safeCell(rows,5,1); // C6
+    const rawPenalty = safeCell(rows,6,1); // C7 (按你要求)
+    document.getElementById('valA').innerText = formatScore(rawA);
+    document.getElementById('valB').innerText = formatScore(rawB);
+    document.getElementById('valFinalSmall').innerText = formatScore(rawB); // small center shows Final label's small value (optional)
+    document.getElementById('valPenalty').innerText = formatScore(rawPenalty); // (not visible in current layout but kept for completeness)
 
-    // 4) 如果 labels 未全部识别，尝试一个简单的备选策略：
-    //    - 在 valueRow 里如果某列为数字且 label 列为空，则把该列猜为相应的 A/B 列（按位置：左中右）
-    const backupCols = {a: null, b: null, penalty: null};
-    if (labels.a === null || labels.b === null || labels.penalty === null) {
-      if (rows[valueRow] && rows[valueRow].c) {
-        const len = rows[valueRow].c.length;
-        // 从左到右尝试把出现数字的列分配到 a/b/penalty（保守策略）
-        let found = 0;
-        for (let j=0;j<len && found < 3;j++){
-          const v = cellVal(rows, valueRow, j);
-          if (v !== null && String(v).trim() !== '' && !isNaN(Number(v))) {
-            if (backupCols.a === null) { backupCols.a = j; found++; continue; }
-            if (backupCols.b === null) { backupCols.b = j; found++; continue; }
-            if (backupCols.penalty === null) { backupCols.penalty = j; found++; continue; }
-          }
-        }
-      }
-    }
-
-    // 使用最终决定的列：优先 labels 中识别出的，否则用备选
-    const aCol = (labels.a !== null) ? labels.a : backupCols.a;
-    const bCol = (labels.b !== null) ? labels.b : backupCols.b;
-    const pCol = (labels.penalty !== null) ? labels.penalty : backupCols.penalty;
-    const finalCol = (labels.final !== null) ? labels.final : null;
-
-    // 写入页面（容错：若某项找不到显示“—”）
-    document.getElementById('nameEng').innerText = nameEng;
-    document.getElementById('nameChn').innerText = nameChn;
-    document.getElementById('club').innerText = club;
-
-    // 标签：优先显示 label 行的文本，否则显示默认
-    const labelText = (r, c, fallback) => {
-      const v = (rows[r] && rows[r].c && rows[r].c[c]) ? (rows[r].c[c].v ?? rows[r].c[c].f ?? '') : '';
-      return (v !== '' && v !== null && v !== undefined) ? String(v) : fallback;
-    };
-
-    document.getElementById('labelA').innerText = (aCol !== null) ? labelText(labelRow, aCol, 'A组得分') : 'A组得分';
-    document.getElementById('labelB').innerText = (bCol !== null) ? labelText(labelRow, bCol, 'B组得分') : 'B组得分';
-    document.getElementById('labelPenalty').innerText = (pCol !== null) ? labelText(labelRow, pCol, '裁判长扣分') : '裁判长扣分';
-
-    document.getElementById('valA').innerText = (aCol !== null) ? formatScore(cellVal(rows, valueRow, aCol)) : formatScore(cellVal(rows, valueRow, backupCols.a));
-    document.getElementById('valB').innerText = (bCol !== null) ? formatScore(cellVal(rows, valueRow, bCol)) : formatScore(cellVal(rows, valueRow, backupCols.b));
-    document.getElementById('valPenalty').innerText = (pCol !== null) ? formatScore(cellVal(rows, valueRow, pCol)) : formatScore(cellVal(rows, valueRow, backupCols.penalty));
-
-    // final
-    const finalLabelText = (finalCol !== null) ? labelText(finalLabelRow, finalCol, 'Final Score 最终得分') : (labelText(finalLabelRow, 0, 'Final Score 最终得分'));
-    const finalVal = (finalCol !== null) ? cellVal(rows, finalValueRow, finalCol) : cellVal(rows, finalValueRow, 0);
-
-    document.getElementById('finalLabel').innerText = finalLabelText;
+    // 第七排固定黄色方块（不读取）
+    // 第八排：最终分数 B8
+    const finalVal = safeCell(rows,7,0); // B8
     document.getElementById('finalScore').innerText = formatScore(finalVal);
 
     document.getElementById('updatedAt').innerText = new Date().toLocaleString();
 
-    // Debug 输出找到的列索引
+    // Debug 输出（便于确认）
     const dbg = [
-      `labelRow: ${labelRow}`,
-      `valueRow: ${valueRow}`,
-      `finalLabelRow: ${finalLabelRow}`,
-      `finalValueRow: ${finalValueRow}`,
-      `aCol: ${aCol}`,
-      `bCol: ${bCol}`,
-      `penaltyCol: ${pCol}`,
-      `finalCol: ${finalCol}`
+      'rows.length=' + (rows ? rows.length : 0),
+      `B1='${safeCell(rows,0,0)}'`,
+      `B2='${safeCell(rows,1,0)}'`,
+      `B3='${safeCell(rows,2,0)}'`,
+      `B4='${safeCell(rows,3,0)}'`,
+      `B6='${safeCell(rows,5,0)}'`,
+      `C6='${safeCell(rows,5,1)}'`,
+      `C7='${safeCell(rows,6,1)}'`,
+      `B8='${safeCell(rows,7,0)}'`
     ].join('\n');
-    setStatus('解析并写入成功');
-    if (SHOW_DEBUG) setError('Detected cols:\n' + dbg);
+    setStatus('解析并更新成功');
+    if (SHOW_DEBUG) setError('Mapping debug:\n' + dbg);
 
   } catch (err) {
     setError('Fetch/解析异常: ' + err.toString());
@@ -275,4 +211,3 @@ setInterval(fetchAndRender, INTERVAL_MS);
 
 </body>
 </html>
-
