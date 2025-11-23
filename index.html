@@ -1,3 +1,74 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>实时成绩看板</title>
+<style>
+  :root{--bg:#071226;--card:#0d1b2a;--accent:#f4c94e;--muted:#97a0b3;color-scheme:dark}
+  html,body{height:100%;margin:0;font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;background:var(--bg);color:#fff}
+  .wrap{max-width:1200px;margin:18px auto;padding:28px}
+  header{text-align:center;margin-bottom:4px}
+  header img{max-width:420px;height:auto;display:inline-block}
+  .title{font-size:44px;font-weight:800;margin:8px 0 30px;text-align:center}
+  .center{max-width:960px;margin:0 auto;text-align:center}
+  .name-eng{font-size:36px;font-weight:800;margin:6px 0}
+  .name-chn{font-size:28px;margin:6px 0;color:var(--muted)}
+  .club{font-size:18px;color:var(--muted);margin-bottom:22px}
+  .scores-row{display:flex;gap:18px;justify-content:center;align-items:stretch;margin-top:18px}
+  .score-card{background:var(--card);padding:20px;border-radius:8px;min-width:200px}
+  .label{font-size:14px;color:var(--muted);margin-bottom:6px;text-align:center}
+  .value{font-size:32px;font-weight:900;text-align:center}
+  .final-label{display:inline-block;background:var(--accent);color:#000;padding:8px 14px;border-radius:8px;font-weight:700;margin-top:22px}
+  .final-score{font-size:180px;font-weight:900;color:var(--accent);margin:20px 0 8px}
+  .meta{font-size:13px;color:var(--muted);margin-top:6px}
+  .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:360px}
+  @media(max-width:800px){ .final-score{font-size:96px} .scores-row{flex-direction:column} .wrap{padding:12px}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img id="banner" src="./jun-wei-banner.jpg" alt="banner" />
+    </header>
+
+    <div class="title">自选长拳</div>
+
+    <div class="center">
+      <div id="nameEng" class="name-eng">—</div>
+      <div id="nameChn" class="name-chn">—</div>
+      <div id="club" class="club">—</div>
+
+      <div class="scores-row">
+        <div class="score-card">
+          <div class="label" id="labelA">A组得分</div>
+          <div class="value" id="valA">—</div>
+        </div>
+        <div class="score-card">
+          <div class="label" id="labelB">B组得分</div>
+          <div class="value" id="valB">—</div>
+        </div>
+        <div class="score-card">
+          <div class="label" id="labelPenalty">裁判长扣分</div>
+          <div class="value" id="valPenalty">—</div>
+        </div>
+      </div>
+
+      <div class="final-label" id="finalLabel">Final Score 最终得分</div>
+      <div class="final-score" id="finalScore">—</div>
+
+      <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
+    </div>
+  </div>
+
+  <div class="debug" id="debugBox" style="display:none">
+    <div><strong>Debug</strong></div>
+    <div>GViz URL: <a id="gvizLink" href="#" target="_blank"></a></div>
+    <div id="netStatus">状态: 等待</div>
+    <pre id="netError" style="white-space:pre-wrap;color:#900"></pre>
+  </div>
+
+<!-- 下面把你上传的脚本完整放进来（这是你之前的智能映射脚本） -->
 <script>
 /* 智能映射版 fetch + applyTable
    - 自动跳过左侧序号列（若存在）
@@ -27,31 +98,24 @@ function safeCellRaw(rows, r, c){
   return null;
 }
 
-// 判断是否为纯数字（包括空白视为非数字）
 function isPureNumber(x){
   if (x === null || x === undefined) return false;
-  // 去掉空格
   const s = String(x).trim();
   if (s === '') return false;
-  // 判断是否完全为数字（包括小数）
   return !isNaN(Number(s));
 }
 
-// 在某一行里找到第一个「看起来像文本的单元」索引（跳过纯数字序号）
 function findFirstTextColInRow(rows, rowIndex){
   if (!rows || !rows[rowIndex] || !rows[rowIndex].c) return null;
   const cols = rows[rowIndex].c;
   for (let j=0;j<cols.length;j++){
     const v = cols[j] && (cols[j].v !== undefined ? cols[j].v : cols[j].f);
     if (v === null || v === undefined) continue;
-    // 如果不是纯数字就当文本
     if (!isPureNumber(v)) return j;
-    // 但如果是数字但明显是我们需要的（例如 final value 3.00）不要跳过——这里只用于找姓名/学校
   }
   return null;
 }
 
-// 在某一行内按关键词查找列索引（返回对象映射）
 function findLabelCols(rows, rowIndex){
   const result = {aCol: null, bCol: null, penaltyCol: null, finalLabelCol: null};
   if (!rows || !rows[rowIndex] || !rows[rowIndex].c) return result;
@@ -79,14 +143,12 @@ function formatScore(v){
 
 function applyTableSmart(table){
   const rows = (table && table.rows) ? table.rows : [];
-  // 保底：如果 rows 长度不足，直接退出
   if (!rows || rows.length < 2) {
     setError('表格行数太少，无法映射（需要至少 8 行预期结构）');
     return;
   }
 
-  // 1) 自动找姓名（B2:D2）行的第一个文本列（跳过序号列）
-  const nameEngCol = findFirstTextColInRow(rows, 1); // 对应 B2 行的“第一文本列”
+  const nameEngCol = findFirstTextColInRow(rows, 1);
   const nameEng = (nameEngCol !== null) ? safeCellRaw(rows,1,nameEngCol) : safeCellRaw(rows,1,0);
 
   const nameChnCol = findFirstTextColInRow(rows, 2);
@@ -95,11 +157,8 @@ function applyTableSmart(table){
   const clubCol = findFirstTextColInRow(rows, 3);
   const club = (clubCol !== null) ? safeCellRaw(rows,3,clubCol) : safeCellRaw(rows,3,0);
 
-  // 2) 在标签行（原 B5..D5）寻找明确的列（A/B/penalty/Final）
-  // 我们尝试在 row index 4 (第五行) 找标签；如果没找到再在该行附近寻找
   let labelRowIndex = 4;
   if (!rows[labelRowIndex] || !rows[labelRowIndex].c) {
-    // 找到第一个包含关键字的行
     for (let r = 0; r < Math.min(rows.length, 10); r++){
       const rr = rows[r];
       if (!rr || !rr.c) continue;
@@ -109,9 +168,7 @@ function applyTableSmart(table){
   }
   const labels = findLabelCols(rows, labelRowIndex);
 
-  // 如果 labels 没有全部识别出来，我们也尝试在整行里找包含 'A组' 的列
   if (!labels.aCol || !labels.bCol || !labels.penaltyCol) {
-    // 遍历 labelRowIndex 的每列去匹配关键字
     const rr = rows[labelRowIndex] && rows[labelRowIndex].c || [];
     for (let j=0;j<rr.length;j++){
       const v = rr[j] && (rr[j].v !== undefined ? String(rr[j].v) : String(rr[j].f || ''));
@@ -124,7 +181,6 @@ function applyTableSmart(table){
     }
   }
 
-  // 3) 根据找到的列去读取数值行（labelRowIndex+1 -> 数值行）， final 行通常为 labelRowIndex+2 / +3，下面尝试读取
   const valueRowIndex = labelRowIndex + 1;
   const finalLabelRowIndex = labelRowIndex + 2;
   const finalValueRowIndex = labelRowIndex + 3;
@@ -136,7 +192,6 @@ function applyTableSmart(table){
   const finalLabelRaw = (labels.finalLabelCol !== null) ? safeCellRaw(rows, finalLabelRowIndex, labels.finalLabelCol) : null;
   const finalValueRaw = safeCellRaw(rows, finalValueRowIndex, labels.finalLabelCol !== null ? labels.finalLabelCol : 0);
 
-  // 写到页面
   document.getElementById('nameEng').innerText = nameEng || '—';
   document.getElementById('nameChn').innerText = nameChn || '—';
   document.getElementById('club').innerText = club || '—';
@@ -154,7 +209,6 @@ function applyTableSmart(table){
 
   document.getElementById('updatedAt').innerText = (new Date()).toLocaleString();
 
-  // Debug 输出：显示识别到的列索引，方便你检核
   const dbg = [
     `nameEngCol detected: ${nameEngCol}`,
     `nameChnCol detected: ${nameChnCol}`,
@@ -199,3 +253,5 @@ async function fetchAndUpdate(){
 fetchAndUpdate();
 setInterval(fetchAndUpdate, INTERVAL_MS);
 </script>
+</body>
+</html>
