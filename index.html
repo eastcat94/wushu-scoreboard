@@ -1,49 +1,74 @@
-<script>
-const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
-const GID = "387691548";
-const INTERVAL_MS = 3000;
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>实时成绩看板</title>
+<style>
+  :root{--bg:#071226;--card:#0d1b2a;--accent:#f4c94e;--muted:#97a0b3;color-scheme:dark}
+  html,body{height:100%;margin:0;font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;background:var(--bg);color:#fff}
+  .wrap{max-width:1200px;margin:18px auto;padding:28px}
+  header{text-align:center;margin-bottom:4px}
+  header img{max-width:420px;height:auto;display:inline-block}
+  .title{font-size:44px;font-weight:800;margin:8px 0 30px;text-align:center}
+  .center{max-width:960px;margin:0 auto;text-align:center}
+  .name-eng{font-size:36px;font-weight:800;margin:6px 0}
+  .name-chn{font-size:28px;margin:6px 0;color:var(--muted)}
+  .club{font-size:18px;color:var(--muted);margin-bottom:22px}
+  .scores-row{display:flex;gap:18px;justify-content:center;align-items:stretch;margin-top:18px}
+  .score-card{background:var(--card);padding:20px;border-radius:8px;min-width:200px}
+  .label{font-size:14px;color:var(--muted);margin-bottom:6px;text-align:center}
+  .value{font-size:32px;font-weight:900;text-align:center}
+  .final-label{display:inline-block;background:var(--accent);color:#000;padding:8px 14px;border-radius:8px;font-weight:700;margin-top:22px}
+  .final-score{font-size:180px;font-weight:900;color:var(--accent);margin:20px 0 8px}
+  .meta{font-size:13px;color:var(--muted);margin-top:6px}
+  .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:360px}
+  @media(max-width:800px){ .final-score{font-size:96px} .scores-row{flex-direction:column} .wrap{padding:12px}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img id="banner" src="./jun-wei-banner.jpg" alt="banner" />
+    </header>
 
-const GVIZ_URL =
-  `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+    <div class="title">自选长拳</div>
 
-async function fetchScore() {
-  try {
-    const res = await fetch(GVIZ_URL, { cache: "no-store" });
-    const text = await res.text();
-    const jsonText = text.replace(/^[\s\S]*?setResponse\(/, "").replace(/\);?\s*$/, "");
-    const data = JSON.parse(jsonText);
+    <div class="center">
+      <div id="nameEng" class="name-eng">—</div>
+      <div id="nameChn" class="name-chn">—</div>
+      <div id="club" class="club">—</div>
 
-    const rows = data.table.rows;
+      <div class="scores-row">
+        <div class="score-card">
+          <div class="label" id="labelA">A组得分</div>
+          <div class="value" id="valA">—</div>
+        </div>
+        <div class="score-card">
+          <div class="label" id="labelB">B组得分</div>
+          <div class="value" id="valB">—</div>
+        </div>
+        <div class="score-card">
+          <div class="label" id="labelPenalty">裁判长扣分</div>
+          <div class="value" id="valPenalty">—</div>
+        </div>
+      </div>
 
-    // 直接固定 B1:D8
-    const get = (r, c) => {
-      const cell = rows[r]?.c[c];
-      if (!cell) return "";
-      return cell.v ?? cell.f ?? "";
-    };
+      <div class="final-label" id="finalLabel">Final Score 最终得分</div>
+      <div class="final-score" id="finalScore">—</div>
 
-    document.getElementById("nameEng").innerText = get(1, 1);
-    document.getElementById("nameChn").innerText = get(2, 1);
-    document.getElementById("club").innerText = get(3, 1);
+      <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
+    </div>
+  </div>
 
-    document.getElementById("labelA").innerText = get(4, 1);
-    document.getElementById("labelB").innerText = get(4, 2);
-    document.getElementById("labelPenalty").innerText = get(4, 3);
+  <div class="debug" id="debugBox" style="display:none">
+    <div><strong>Debug</strong></div>
+    <div>GViz URL: <a id="gvizLink" href="#" target="_blank"></a></div>
+    <div id="netStatus">状态: 等待</div>
+    <pre id="netError" style="white-space:pre-wrap;color:#900"></pre>
+  </div>
 
-    document.getElementById("valA").innerText = get(5, 1);
-    document.getElementById("valB").innerText = get(5, 2);
-    document.getElementById("valPenalty").innerText = get(5, 3);
+<!-- 下面把你上传的脚本完整放进来（这是你之前的智能映射脚本） -->
 
-    document.getElementById("finalLabel").innerText = get(6, 1);
-    document.getElementById("finalScore").innerText = get(7, 1);
-
-    document.getElementById("updatedAt").innerText =
-      new Date().toLocaleString();
-  } catch (err) {
-    console.error("Error:", err);
-  }
-}
-
-fetchScore();
-setInterval(fetchScore, INTERVAL_MS);
-</script>
+</body>
+</html>
