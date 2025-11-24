@@ -3,114 +3,158 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>实时成绩看板</title>
+<title>实时成绩看板 - 精简版</title>
 <style>
-  #scaleWrap {
-    transform-origin: top center;
-}
-  body {
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;   /* 可选，让整体垂直居中 */
-}
-  :root{--bg:#071226;--card:#0d1b2a;--accent:#f4c94e;--muted:#97a0b3;color-scheme:dark}
-  html,body{height:100%;margin:0;font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;background:var(--bg);color:#fff}
-  .wrap{max-width:1200px;margin:18px auto;padding:28px;box-sizing:border-box}
-  header{text-align:center;margin-bottom:6px}
-  header img{max-width:480px;height:auto;display:inline-block;border:4px solid #fff}
-  .title{font-size:56px;font-weight:800;margin:12px 0 6px;text-align:center}
-  .name-eng{font-size:36px;font-weight:800;text-align:center;margin:6px 0}
-  .name-chn{font-size:32px;text-align:center;margin:6px 0;color:var(--muted)}
-  .club{font-size:20px;text-align:center;margin:6px 0;color:var(--muted)}
-  .scores-row{display:flex;gap:18px;justify-content:center;align-items:stretch;margin-top:26px}
-  .score-card{background:var(--card);padding:26px;border-radius:10px;min-width:220px;box-shadow:0 2px 6px rgba(0,0,0,0.2)}
-  .label{font-size:14px;color:var(--muted);margin-bottom:6px;text-align:center}
-  .value{font-size:36px;font-weight:900;text-align:center}
-  .final-label{display:inline-block;background:var(--accent);color:#000;padding:10px 16px;border-radius:8px;font-weight:700;margin-top:22px}
-  .final-score{font-size:120px;font-weight:900;color:var(--accent);margin:20px 0 8px;text-align:center}
-  .meta{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
-  .debug{position:fixed;right:12px;top:12px;background:#fff;color:#000;padding:10px;border-radius:8px;font-size:12px;z-index:9999;max-width:420px;overflow:auto;white-space:pre-wrap;display:none}
-  @media(max-width:900px){
-    .title{font-size:34px}
-    .final-score{font-size:64px}
-    .scores-row{flex-direction:column}
+  /* ========== 主题色与全局变量（方便快速微调） ========== */
+  :root{
+    --bg:#071226;
+    --card:#0d1b2a;
+    --accent:#f4c94e;
+    --muted:#97a0b3;
+    --font-sans: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+
+    /* 设计宽高（用于 autoScale），可改成你设计时的宽高 */
+    --design-width: 1200px;   /* 如果想页面相对于更窄/更宽，可调整此值 */
+    --design-height: 900px;
   }
+
+  /* 基础布局 */
+  html,body{height:100%;margin:0;font-family:var(--font-sans);background:var(--bg);color:#fff}
+  body{display:flex;align-items:center;justify-content:center}
+  #scaleWrap { transform-origin: top center; } /* auto scale 的容器 */
+
+  /* 内容卡片容器 */
+  .wrap{width:var(--design-width); box-sizing:border-box; padding:22px;}
+
+  /* 各行样式：B1..B5 */
+  .project-eng{font-size:36px;font-weight:800;text-align:center;margin:8px 0}
+  .project-chn{font-size:28px;text-align:center;margin:6px 0;color:var(--muted)}
+  .name-eng{font-size:34px;font-weight:800;text-align:center;margin:6px 0}
+  .name-chn{font-size:28px;text-align:center;margin:6px 0;color:var(--muted)}
+  .club{font-size:18px;text-align:center;margin:6px 0;color:var(--muted)}
+
+  /* 得分标签行（B6）与数值行（B7） */
+  .labels-row{display:flex;gap:18px;justify-content:center;margin-top:18px}
+  .label-card{background:var(--card);padding:12px;border-radius:8px;min-width:180px;text-align:center}
+  .label-card .label{font-size:16px;color:var(--muted);margin-bottom:6px}
+  .label-card .value{font-size:40px;font-weight:900}
+
+  /* Final 标签（B8）和分数（B9） - 已放大，便于远距离阅读 */
+  /* 我把 Final Label（B8）从 ~14px 提升到 28px (+14px)，Final Score（B9）从 120px 调到 160px（+40px） */
+  .final-wrap{text-align:center;margin-top:22px}
+  .final-label{display:inline-block;background:var(--accent);color:#000;padding:10px 18px;border-radius:8px;font-weight:800;font-size:28px}
+  .final-score{font-size:160px;font-weight:900;color:var(--accent);margin:14px 0;text-align:center}
+
+  /* 小屏幕响应（可根据需要微调断点） */
+  @media(max-width:900px){
+    .labels-row{flex-direction:column; gap:12px}
+    .final-score{font-size:84px} /* 小屏幕时适当缩小 */
+    .final-label{font-size:18px}
+  }
+
+  /* 额外备注：要微调字体大小，请修改上面对应类的 font-size；
+     - project-eng / project-chn / name-eng / name-chn / club
+     - label-card .value（控制 B7 的大小）
+     - .final-label（B8）与 .final-score（B9） */
 </style>
 </head>
 <body>
   <div id="scaleWrap">
     <div class="wrap">
 
-        <header>
-            <img id="banner" src="./jun-wei-banner.jpg">
-        </header>
+      <!-- B1: 项目 (eng) -->
+      <div class="project-eng" id="projectEng">—</div>
 
-    <div class="title" id="sheetTitle">—</div>
-    <div class="name-eng" id="nameEng">—</div>
-    <div class="name-chn" id="nameChn">—</div>
-    <div class="club" id="club">—</div>
+      <!-- B2: 项目 (cn) -->
+      <div class="project-chn" id="projectCht">—</div>
 
-    <div class="scores-row" style="margin-top:20px">
-      <div class="score-card">
-        <div class="label" id="labelA">A组得分</div>
-        <div class="value" id="valA">—</div>
+      <!-- B3: name-eng -->
+      <div class="name-eng" id="nameEng">—</div>
+
+      <!-- B4: name-chn -->
+      <div class="name-chn" id="nameCht">—</div>
+
+      <!-- B5: club -->
+      <div class="club" id="club">—</div>
+
+      <!-- B6: 标签行（固定文字或来自表格 B6..E6） -->
+      <div class="labels-row" id="labelsRow" style="margin-top:18px">
+        <div class="label-card">
+          <div class="label" id="labelA">A组得分</div>
+          <div class="value" id="valA">—</div>
+        </div>
+        <div class="label-card">
+          <div class="label" id="labelB">B组得分</div>
+          <div class="value" id="valB">—</div>
+        </div>
+        <div class="label-card">
+          <div class="label" id="labelD">纪律扣分</div>
+          <div class="value" id="valD">—</div>
+        </div>
+        <div class="label-card">
+          <div class="label" id="labelF">裁判长扣分</div>
+          <div class="value" id="valF">—</div>
+        </div>
       </div>
-      <div class="score-card">
-        <div class="label" id="labelB">B组得分</div>
-        <div class="value" id="valB">—</div>
+
+      <!-- B8: Final Score 最终得分（固定文字，加大） -->
+      <div class="final-wrap">
+        <div class="final-label" id="finalLabel">Final Score 最终得分</div>
       </div>
-      <div class="score-card">
-        <div class="label" id="labelPenalty">裁判长扣分</div>
-        <div class="value" id="valPenalty">—</div>
+
+      <!-- B9: Final Score 数字（加大） -->
+      <div class="final-score" id="finalScore">—</div>
+
+      <div style="text-align:center;color:var(--muted);font-size:13px;margin-top:6px">
+        最后更新时间：<span id="updatedAt">-</span>
       </div>
     </div>
-
-    <div style="text-align:center;margin-top:18px">
-      <span class="final-label" id="finalLabel">Final Score 最终得分</span>
-    </div>
-    <div class="final-score" id="finalScore">—</div>
-
-    <div class="meta">最后更新时间：<span id="updatedAt">-</span></div>
-  </div>
-
-  <div class="debug" id="debugBox" >
-    <div><strong>Debug</strong></div>
-    <div>GViz URL: <a id="gvizLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
-    <div id="netStatus">状态: 等待</div>
-    <pre id="netError" style="color:#900"></pre>
   </div>
 
 <script>
-function autoScale() {
-    const designWidth = 1200;   // 你网页的最大宽度
-    const designHeight = 900;   // 页面高度（可微调）
+/*
+  抓取说明（重要）：
+  - 我使用 Google Sheets 的 GViz 接口（JSONP 格式），并把固定列设为 B 列（FIX_BASE_COL = 1）。
+  - parseGviz 之后得到 data.table.rows：这是一个数组，数组的 index 对应电子表格的行（从 0 开始）。
+    对应关系举例（当 FIX_BASE_COL = 1，即 B 列）：
+      rows[0].c[1]  => 工作表 B1   (页面: projectEng)
+      rows[1].c[1]  => 工作表 B2   (页面: projectCht)
+      rows[2].c[1]  => 工作表 B3   (页面: nameEng)
+      rows[3].c[1]  => 工作表 B4   (页面: nameCht)
+      rows[4].c[1]  => 工作表 B5   (页面: club)
+      rows[5].c[1]  => 工作表 B6   (标签行 - A组得分)
+      rows[5].c[2]  => 工作表 C6   (标签行 - B组得分)
+      rows[5].c[3]  => 工作表 D6   (标签行 - 纪律扣分)
+      rows[5].c[4]  => 工作表 E6   (标签行 - 裁判长扣分)  <-- 注意：电子表格列偏移要与实际表格列对齐
+      rows[6].c[1]  => 工作表 B7   (数值行 - A组得分)
+      rows[6].c[2]  => 工作表 C7   (数值行 - B组得分)
+      rows[6].c[3]  => 工作表 D7   (数值行 - 纪律扣分)
+      rows[6].c[4]  => 工作表 E7   (数值行 - 裁判长扣分)
+      rows[7].c[1]  => 工作表 B8   (Final Score 文本，也可从这里读取)
+      rows[8].c[1]  => 工作表 B9   (Final Score 数值)
+    以上只是常见排布示例；如果你的表格列位置或行数不同，请把 FIX_BASE_COL、或所用的行索引（safeCell 的第二个参数）改成实际值。
 
-    const scaleX = window.innerWidth / designWidth;
-    const scaleY = window.innerHeight / designHeight;
+  - FIX_BASE_COL 定义：数字（0基）代表 "在 gviz rows[].c 中我们期望读取的基础列索引"
+    例如 FIX_BASE_COL = 1 表示读取 rows[].c[1]，也就是电子表格的 B 列（gviz 的 c[] 是 0-based 列索引）
+*/
 
-    const scale = Math.min(scaleX, scaleY);
-
-    document.getElementById("scaleWrap").style.transform = `scale(${scale})`;
-}
-
-autoScale();
-window.onresize = autoScale;
-/* Same logic as the previous file but with debug disabled */
-const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w";
+/* 配置项 */
+const SPREADSHEET_ID = "1qGA-x86Xt7qEXwzO_Nx0RwaFr7yO2x3kocqA_nTfA0w"; // 如需替换请改此处
 const GID = "387691548";
 const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 const INTERVAL_MS = 3000;
-const FIX_BASE_COL = 1; // B 列 index in gviz
-const SHOW_DEBUG = false; // debug turned off
 
-function setStatus(txt){ if (SHOW_DEBUG) document.getElementById('netStatus').innerText = '状态: ' + txt; }
-function setError(txt){ if (SHOW_DEBUG) document.getElementById('netError').innerText = txt; console.error(txt); }
+/* FIX_BASE_COL: 0-based 列索引；1 = B 列 */
+const FIX_BASE_COL = 1;
 
+/* 解析 GViz JSONP */
 function parseGviz(text){
   return JSON.parse(text.replace(/^[\s\S]*?google\.visualization\.Query\.setResponse\(/, '').replace(/\);?\s*$/, ''));
 }
 function safeCell(rows, r, c){
+  // rows: data.table.rows
+  // r: row index (0-based)
+  // c: column index (0-based) relative to gviz c[] array
   if (!rows || !rows[r] || !rows[r].c) return null;
   const cell = rows[r].c[c];
   if (!cell) return null;
@@ -120,56 +164,74 @@ function formatScore(v){
   if (v === null || v === undefined || v === '') return '—';
   const n = Number(v);
   if (isNaN(n)) return String(v);
-  return n.toFixed(2); // always two decimals
+  return n.toFixed(2);
 }
 
+/* 自动缩放：根据窗口大小与设计宽高等比缩放 */
+function autoScale() {
+    const designWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--design-width')) || 1200;
+    const designHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--design-height')) || 900;
+
+    const scaleX = window.innerWidth / designWidth;
+    const scaleY = window.innerHeight / designHeight;
+    const scale = Math.min(scaleX, scaleY);
+
+    document.getElementById("scaleWrap").style.transform = `scale(${scale})`;
+}
+autoScale();
+window.onresize = autoScale;
+
+/* 主抓取并渲染函数 */
 async function fetchAndRender(){
-  if (SHOW_DEBUG) document.getElementById('debugBox').style.display = 'block';
   try {
     const res = await fetch(GVIZ_URL, {cache:'no-store'});
     const txt = await res.text();
     const data = parseGviz(txt);
     const rows = data.table.rows;
-    const baseCol = FIX_BASE_COL;
+    const baseCol = FIX_BASE_COL; // 0-based
 
-    document.getElementById('sheetTitle').innerText = safeCell(rows,0,baseCol) || '—';
-    document.getElementById('nameEng').innerText = safeCell(rows,1,baseCol) || '—';
-    document.getElementById('nameChn').innerText = safeCell(rows,2,baseCol) || '—';
-    document.getElementById('club').innerText = safeCell(rows,3,baseCol) || '—';
+    /* B1..B5 映射 */
+    document.getElementById('projectEng').innerText = safeCell(rows,0,baseCol) || '—'; // rows[0].c[baseCol] -> B1
+    document.getElementById('projectCht').innerText = safeCell(rows,1,baseCol) || '—'; // B2
+    document.getElementById('nameEng').innerText = safeCell(rows,2,baseCol) || '—';    // B3
+    document.getElementById('nameCht').innerText = safeCell(rows,3,baseCol) || '—';    // B4
+    document.getElementById('club').innerText = safeCell(rows,4,baseCol) || '—';       // B5
 
-    const labA = safeCell(rows,4,baseCol);
-    const labB = safeCell(rows,4,baseCol+1);
-    const labP = safeCell(rows,4,baseCol+2);
+    /* B6: 标签行（可来自 B6..E6） - 优先使用表格内给出的文字，否则保留默认 */
+    const labA = safeCell(rows,5,baseCol);     // B6
+    const labB = safeCell(rows,5,baseCol+1);   // C6
+    const labD = safeCell(rows,5,baseCol+2);   // D6
+    const labF = safeCell(rows,5,baseCol+3);   // E6  (注意表格列偏移)
+
     if (labA) document.getElementById('labelA').innerText = String(labA);
     if (labB) document.getElementById('labelB').innerText = String(labB);
-    if (labP) document.getElementById('labelPenalty').innerText = String(labP);
+    if (labD) document.getElementById('labelD').innerText = String(labD);
+    if (labF) document.getElementById('labelF').innerText = String(labF);
 
-    const aVal = safeCell(rows,5,baseCol) ?? safeCell(rows,6,baseCol);
-    const bVal = safeCell(rows,5,baseCol+1) ?? safeCell(rows,6,baseCol+1);
-    const pVal = safeCell(rows,5,baseCol+2) ?? safeCell(rows,6,baseCol+2);
+    /* B7: 数值行（优先读取 B7，若为空则寻找下一行 B6/B8 等备选） */
+    const aVal = safeCell(rows,6,baseCol) ?? safeCell(rows,5,baseCol) ?? safeCell(rows,7,baseCol);
+    const bVal = safeCell(rows,6,baseCol+1) ?? safeCell(rows,5,baseCol+1) ?? safeCell(rows,7,baseCol+1);
+    const dVal = safeCell(rows,6,baseCol+2) ?? safeCell(rows,5,baseCol+2) ?? safeCell(rows,7,baseCol+2);
+    const fVal = safeCell(rows,6,baseCol+3) ?? safeCell(rows,5,baseCol+3) ?? safeCell(rows,7,baseCol+3);
 
     document.getElementById('valA').innerText = formatScore(aVal);
     document.getElementById('valB').innerText = formatScore(bVal);
-    document.getElementById('valPenalty').innerText = formatScore(pVal);
+    document.getElementById('valD').innerText = formatScore(dVal);
+    document.getElementById('valF').innerText = formatScore(fVal);
 
-    const finalVal = safeCell(rows,7,baseCol) ?? safeCell(rows,6,baseCol) ?? safeCell(rows,5,baseCol);
+    /* Final Score: 常见放在 B9（rows[8]），但我们用备选逻辑 */
+    const finalVal = safeCell(rows,8,baseCol) ?? safeCell(rows,7,baseCol) ?? safeCell(rows,6,baseCol);
     document.getElementById('finalScore').innerText = formatScore(finalVal);
 
     document.getElementById('updatedAt').innerText = new Date().toLocaleString();
-
   } catch (err) {
-    console.error(err);
+    console.error('fetchAndRender error:', err);
   }
 }
 
+/* 首次加载并且周期更新 */
 fetchAndRender();
 setInterval(fetchAndRender, INTERVAL_MS);
 </script>
-        </div> <!-- end wrap -->
-    </div> <!-- end scaleWrap -->
 </body>
 </html>
-
-
-
-
