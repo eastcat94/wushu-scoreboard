@@ -20,7 +20,7 @@
   html,body{height:100%;margin:0;font-family:var(--font-sans);background:var(--bg);color:#fff}
   /* 垂直+水平居中（使用 100vh 保证移除 banner 后也能居中） */
   body{display:flex;align-items:center;justify-content:center; height:100vh;}
-  #scaleWrap { transform-origin: top center; } /* auto scale 容器 */
+  #scaleWrap { transform-origin: center center; } /* auto scale 容器 */
 
   .wrap{width:var(--design-width); box-sizing:border-box; padding:22px; margin:0;}
 
@@ -212,3 +212,4 @@ setInterval(fetchAndRender, INTERVAL_MS);
 </script>
 </body>
 </html>
+
